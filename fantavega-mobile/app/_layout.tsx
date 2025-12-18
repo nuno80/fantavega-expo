@@ -60,6 +60,26 @@ export default function RootLayout() {
               title: "Lega",
             }}
           />
+          <Stack.Screen
+            name="league/create"
+            options={{
+              title: "Crea Lega",
+              presentation: "modal",
+            }}
+          />
+          <Stack.Screen
+            name="league/[id]/settings"
+            options={{
+              title: "Impostazioni",
+            }}
+          />
+          <Stack.Screen
+            name="league/join"
+            options={{
+              title: "Unisciti",
+              presentation: "modal",
+            }}
+          />
         </Stack>
       </Suspense>
     </QueryClientProvider>

@@ -57,6 +57,7 @@ export const LeagueSchema = z.object({
   minBid: z.number().min(1).default(1),
   timerDurationMinutes: z.number().min(1).default(1440),
   adminCreatorId: z.string(),
+  inviteCode: z.string().nullish(), // Codice invito per entrare nella lega
   createdAt: z.date(),
   updatedAt: z.date(),
 });

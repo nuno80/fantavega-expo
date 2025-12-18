@@ -1,0 +1,355 @@
+// app/league/[id]/settings.tsx
+// Impostazioni lega - Solo per Admin (creatore)
+
+import { useLeague, useLeagueParticipants } from "@/hooks/useLeague";
+import { removeParticipant, updateLeague } from "@/services/league.service";
+import { useUserStore } from "@/stores/userStore";
+import { CreateLeagueFormSchema, type League } from "@/types/schemas";
+import { zodResolver } from "@hookform/resolvers/zod";
+import * as Clipboard from "expo-clipboard";
+import { Stack, useLocalSearchParams, useRouter } from "expo-router";
+import { useEffect, useState } from "react";
+import { Controller, useForm } from "react-hook-form";
+import {
+  ActivityIndicator,
+  Alert,
+  Pressable,
+  ScrollView,
+  Text,
+  TextInput,
+  View,
+} from "react-native";
+
+// Schema per update (solo campi modificabili)
+const UpdateLeagueSchema = CreateLeagueFormSchema.partial();
+
+export default function LeagueSettingsScreen() {
+  const { id: leagueId } = useLocalSearchParams<{ id: string }>();
+  const router = useRouter();
+  const { currentUserId } = useUserStore();
+
+  const { data: league, isLoading, refetch } = useLeague(leagueId ?? "");
+  const { data: participants, refetch: refetchParticipants } = useLeagueParticipants(leagueId ?? "");
+
+  const [isSaving, setIsSaving] = useState(false);
+
+  // Se la lega non ha un codice invito, ne generiamo uno e lo salviamo
+  const [inviteCode, setInviteCode] = useState<string | null>(null);
+
+  // Quando la lega si carica, controlliamo se ha già un codice
+  // Se non ce l'ha, ne generiamo uno e lo salviamo nel DB
+  useEffect(() => {
+    if (!league || !leagueId) return;
+
+    if (league.inviteCode) {
+      setInviteCode(league.inviteCode);
+    } else {
+      // Genera e salva il codice per leghe vecchie
+      const newCode = generateInviteCode();
+      setInviteCode(newCode);
+      updateLeague(leagueId, { inviteCode: newCode }).catch(console.error);
+    }
+  }, [league, leagueId]);
+
+  const {
+    control,
+    handleSubmit,
+    formState: { errors, isDirty },
+  } = useForm({
+    resolver: zodResolver(UpdateLeagueSchema),
+    values: league ? {
+      name: league.name,
+      leagueType: league.leagueType,
+      initialBudgetPerManager: league.initialBudgetPerManager,
+      slotsP: league.slotsP,
+      slotsD: league.slotsD,
+      slotsC: league.slotsC,
+      slotsA: league.slotsA,
+    } : undefined,
+  });
+
+  // Loading
+  if (isLoading || !league) {
+    return (
+      <View className="flex-1 items-center justify-center bg-dark-bg">
+        <ActivityIndicator size="large" color="#4f46e5" />
+      </View>
+    );
+  }
+
+  // Guard: Solo admin può vedere questa pagina
+  const isAdmin = league.adminCreatorId === currentUserId;
+  if (!isAdmin) {
+    return (
+      <View className="flex-1 items-center justify-center bg-dark-bg p-6">
+        <Text className="text-4xl mb-4">🔒</Text>
+        <Text className="text-white text-lg text-center">
+          Solo l'amministratore può modificare le impostazioni
+        </Text>
+        <Pressable
+          onPress={() => router.back()}
+          className="mt-6 bg-primary rounded-xl px-6 py-3"
+        >
+          <Text className="text-white font-semibold">Torna indietro</Text>
+        </Pressable>
+      </View>
+    );
+  }
+
+  const onSubmit = async (data: Partial<League>) => {
+    if (!leagueId) return;
+    setIsSaving(true);
+    try {
+      await updateLeague(leagueId, data);
+      await refetch();
+      Alert.alert("Salvato!", "Impostazioni aggiornate con successo");
+    } catch (error) {
+      Alert.alert("Errore", "Impossibile salvare le impostazioni");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleRemoveParticipant = (userId: string, name: string) => {
+    Alert.alert(
+      "Rimuovi partecipante",
+      `Sei sicuro di voler rimuovere ${name} dalla lega?`,
+      [
+        { text: "Annulla", style: "cancel" },
+        {
+          text: "Rimuovi",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              await removeParticipant(leagueId!, userId);
+              await refetchParticipants();
+            } catch (error) {
+              Alert.alert("Errore", "Impossibile rimuovere il partecipante");
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  return (
+    <>
+      <Stack.Screen
+        options={{
+          title: "Impostazioni Lega",
+          headerStyle: { backgroundColor: "#0f0f0f" },
+          headerTintColor: "#fff",
+        }}
+      />
+
+      <ScrollView className="flex-1 bg-dark-bg">
+        <View className="p-4">
+          {/* Header */}
+          <View className="flex-row items-center mb-6">
+            <Text className="text-2xl">⚙️</Text>
+            <Text className="text-xl font-bold text-white ml-2">
+              Impostazioni
+            </Text>
+          </View>
+
+          {/* Nome Lega */}
+          <View className="mb-4">
+            <Text className="text-white font-semibold mb-2">Nome Lega</Text>
+            <Controller
+              control={control}
+              name="name"
+              render={({ field: { onChange, value } }) => (
+                <TextInput
+                  className="bg-dark-card text-white p-4 rounded-xl"
+                  value={value}
+                  onChangeText={onChange}
+                  placeholder="Nome della lega"
+                  placeholderTextColor="#6b7280"
+                />
+              )}
+            />
+            {errors.name && (
+              <Text className="text-red-400 mt-1 text-sm">{errors.name.message}</Text>
+            )}
+          </View>
+
+          {/* Budget */}
+          <View className="mb-4">
+            <Text className="text-white font-semibold mb-2">Budget Iniziale</Text>
+            <Controller
+              control={control}
+              name="initialBudgetPerManager"
+              render={({ field: { onChange, value } }) => (
+                <TextInput
+                  className="bg-dark-card text-white p-4 rounded-xl"
+                  value={String(value ?? "")}
+                  onChangeText={(t) => onChange(Number(t) || 0)}
+                  keyboardType="numeric"
+                  placeholder="500"
+                  placeholderTextColor="#6b7280"
+                />
+              )}
+            />
+          </View>
+
+          {/* Slots */}
+          <View className="mb-6">
+            <Text className="text-white font-semibold mb-3">Slot Rosa</Text>
+            <View className="bg-dark-card rounded-xl p-4">
+              <View className="flex-row justify-around">
+                {(["P", "D", "C", "A"] as const).map((role) => (
+                  <Controller
+                    key={role}
+                    control={control}
+                    name={`slots${role}` as "slotsP" | "slotsD" | "slotsC" | "slotsA"}
+                    render={({ field: { onChange, value } }) => (
+                      <View className="items-center">
+                        <View className={`h-10 w-10 items-center justify-center rounded-full bg-role-${role} mb-2`}>
+                          <Text className="text-white font-bold">{role}</Text>
+                        </View>
+                        <TextInput
+                          className="bg-dark-bg text-white text-center w-12 p-2 rounded-lg"
+                          value={String(value ?? "")}
+                          onChangeText={(t) => onChange(Number(t) || 0)}
+                          keyboardType="numeric"
+                        />
+                      </View>
+                    )}
+                  />
+                ))}
+              </View>
+            </View>
+          </View>
+
+          {/* Save Button */}
+          {isDirty && (
+            <Pressable
+              onPress={handleSubmit(onSubmit)}
+              disabled={isSaving}
+              className={`mb-6 p-4 rounded-xl items-center ${isSaving ? "bg-gray-600" : "bg-green-600 active:opacity-80"
+                }`}
+            >
+              {isSaving ? (
+                <ActivityIndicator color="white" />
+              ) : (
+                <Text className="text-white font-bold">💾 Salva Modifiche</Text>
+              )}
+            </Pressable>
+          )}
+
+          {/* Invite Code Section */}
+          <View className="bg-dark-card rounded-xl p-4 mb-6">
+            <Text className="text-white font-semibold mb-2">🔗 Codice Invito</Text>
+            <Text className="text-gray-400 text-sm mb-3">
+              Condividi questo codice per invitare altri manager
+            </Text>
+            <View className="bg-dark-bg rounded-lg p-4 flex-row items-center justify-between">
+              <Text className="text-white text-xl font-mono font-bold">
+                {inviteCode}
+              </Text>
+              <Pressable
+                onPress={async () => {
+                  if (inviteCode) {
+                    await Clipboard.setStringAsync(inviteCode);
+                    Alert.alert("Copiato!", "Codice copiato negli appunti");
+                  }
+                }}
+                className="bg-primary px-4 py-2 rounded-lg"
+              >
+                <Text className="text-white font-semibold">Copia</Text>
+              </Pressable>
+            </View>
+          </View>
+
+          {/* Participants Management */}
+          <View className="bg-dark-card rounded-xl p-4 mb-8">
+            <Text className="text-white font-semibold mb-4">
+              👥 Gestione Partecipanti ({participants?.length ?? 0})
+            </Text>
+
+            {participants && participants.length > 0 ? (
+              participants.map((p) => {
+                const isCurrentUserAdmin = p.userId === league.adminCreatorId;
+                return (
+                  <View
+                    key={p.userId}
+                    className="flex-row items-center justify-between bg-dark-bg rounded-xl p-3 mb-2"
+                  >
+                    <View className="flex-row items-center flex-1">
+                      <View className="h-10 w-10 items-center justify-center rounded-full bg-primary-600 mr-3">
+                        <Text className="text-white">👤</Text>
+                      </View>
+                      <View className="flex-1">
+                        <Text className="text-white font-semibold">
+                          {p.managerTeamName ?? "Manager"}
+                        </Text>
+                        <Text className="text-gray-400 text-xs">
+                          Budget: {p.currentBudget} cr
+                        </Text>
+                      </View>
+                      {isCurrentUserAdmin && (
+                        <View className="bg-yellow-600/30 px-2 py-1 rounded-full mr-2">
+                          <Text className="text-yellow-400 text-xs">Admin</Text>
+                        </View>
+                      )}
+                    </View>
+
+                    {!isCurrentUserAdmin && (
+                      <Pressable
+                        onPress={() => handleRemoveParticipant(p.userId, p.managerTeamName ?? "Manager")}
+                        className="bg-red-600/20 p-2 rounded-lg"
+                      >
+                        <Text className="text-red-400">✕</Text>
+                      </Pressable>
+                    )}
+                  </View>
+                );
+              })
+            ) : (
+              <Text className="text-gray-400 text-center">
+                Nessun partecipante
+              </Text>
+            )}
+          </View>
+
+          {/* Danger Zone */}
+          <View className="bg-red-900/20 border border-red-800 rounded-xl p-4 mb-8">
+            <Text className="text-red-400 font-semibold mb-2">⚠️ Zona Pericolosa</Text>
+            <Pressable
+              onPress={() => {
+                Alert.alert(
+                  "Elimina Lega",
+                  "Questa azione è irreversibile. Sei sicuro?",
+                  [
+                    { text: "Annulla", style: "cancel" },
+                    {
+                      text: "Elimina", style: "destructive", onPress: () => {
+                        // TODO: Implement deleteLeague
+                        Alert.alert("Info", "Funzionalità in arrivo");
+                      }
+                    },
+                  ]
+                );
+              }}
+              className="bg-red-600/30 p-3 rounded-lg"
+            >
+              <Text className="text-red-400 text-center font-semibold">
+                🗑️ Elimina Lega
+              </Text>
+            </Pressable>
+          </View>
+        </View>
+      </ScrollView>
+    </>
+  );
+}
+
+// Genera codice invito casuale
+function generateInviteCode(): string {
+  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+  let code = "";
+  for (let i = 0; i < 6; i++) {
+    code += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return code;
+}

@@ -24,7 +24,7 @@ interface BiddingInterfaceProps {
   leagueId: string;
   auctionId: string;
   currentBid: number;
-  currentBidderId: string | null;
+  currentBidderId: string | null | undefined; // nullish da Zod schema
   // Budget info (passato dal parent, in futuro da auth context)
   userBudget?: number;
   userLockedCredits?: number;
@@ -175,8 +175,8 @@ export const BiddingInterface = ({
                 onPress={() => handleQuickBid(increment)}
                 disabled={isLoading || !canAfford}
                 className={`flex-1 mx-1 rounded-xl py-3 ${canAfford
-                    ? "bg-primary-600 active:bg-primary-700"
-                    : "bg-gray-700 opacity-50"
+                  ? "bg-primary-600 active:bg-primary-700"
+                  : "bg-gray-700 opacity-50"
                   }`}
               >
                 <Text className="text-center text-white font-bold">
@@ -208,8 +208,8 @@ export const BiddingInterface = ({
             onPress={handleManualBid}
             disabled={isLoading || !customAmount}
             className={`rounded-xl px-6 py-3 ${customAmount && !isLoading
-                ? "bg-green-600 active:bg-green-700"
-                : "bg-gray-700 opacity-50"
+              ? "bg-green-600 active:bg-green-700"
+              : "bg-gray-700 opacity-50"
               }`}
           >
             {isLoading ? (

@@ -25,8 +25,7 @@ export default function DashboardScreen() {
   };
 
   const handleCreateLeague = () => {
-    // TODO: Navigate to create league screen
-    console.log("Create league");
+    router.push("/league/create");
   };
 
   return (
@@ -68,12 +67,20 @@ export default function DashboardScreen() {
       <View className="px-4 pb-2">
         <View className="mb-4 flex-row items-center justify-between">
           <Text className="text-lg font-semibold text-white">🏆 Le Tue Leghe</Text>
-          <Pressable
-            onPress={handleCreateLeague}
-            className="rounded-lg bg-primary-600 px-4 py-2 active:opacity-80"
-          >
-            <Text className="text-sm font-semibold text-white">+ Nuova</Text>
-          </Pressable>
+          <View className="flex-row gap-2">
+            <Pressable
+              onPress={() => router.push("/league/join")}
+              className="rounded-lg bg-dark-card border border-primary-600 px-3 py-2 active:opacity-80"
+            >
+              <Text className="text-sm font-semibold text-primary-500">🎟️ Unisciti</Text>
+            </Pressable>
+            <Pressable
+              onPress={handleCreateLeague}
+              className="rounded-lg bg-primary-600 px-4 py-2 active:opacity-80"
+            >
+              <Text className="text-sm font-semibold text-white">+ Nuova</Text>
+            </Pressable>
+          </View>
         </View>
       </View>
 
