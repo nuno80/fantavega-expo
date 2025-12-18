@@ -77,17 +77,18 @@ export const LeagueParticipantSchema = z.object({
 export type LeagueParticipant = z.infer<typeof LeagueParticipantSchema>;
 
 // Live Auction schema (Realtime DB)
+// Nota: usiamo .nullish() per accettare sia null che undefined (campo mancante)
 export const LiveAuctionSchema = z.object({
   playerId: z.number(),
   playerName: z.string(),
   playerRole: z.enum(["P", "D", "C", "A"]),
   playerTeam: z.string(),
-  playerPhotoUrl: z.string().nullable(),
+  playerPhotoUrl: z.string().nullish(), // può essere null, undefined, o stringa
   startTime: z.number(),
   scheduledEndTime: z.number(),
   currentBid: z.number(),
-  currentBidderId: z.string().nullable(),
-  currentBidderName: z.string().nullable(),
+  currentBidderId: z.string().nullish(), // può essere null se nessuna offerta
+  currentBidderName: z.string().nullish(),
   status: z.enum(["active", "closing", "sold", "not_sold", "cancelled"]),
   userStates: z.record(z.string(), z.enum(["active", "abandoned"])).optional(),
 });
