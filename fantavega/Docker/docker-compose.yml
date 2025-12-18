@@ -1,0 +1,25 @@
+# Docker/docker-compose.yml
+
+services:
+  app:
+    build:
+      context: .. # Root del progetto (fantavega/)
+      dockerfile: Docker/Dockerfile # Percorso al Dockerfile
+    container_name: nuno_next_starter_2_dev
+    ports:
+      - "3000:3000"
+    volumes:
+      # Monta il codice sorgente per hot-reloading
+      # Esclude node_modules e .next per usare quelle del container
+      - ../src:/app/src
+      - ../public:/app/public # Se modifichi file in public, vuoi vederli
+      - ../database:/app/database
+      - /app/node_modules # Impedisce il mount di node_modules locali
+      - /app/.next # Impedisce il mount di .next locale (Next.js lo gestisce nel container)
+    env_file:
+      - ../.env.local # O ../.env se hai scelto di usare quello
+    environment:
+      NODE_ENV: development
+      # CHOKIDAR_USEPOLLING: "true" # Per hot-reloading in Docker su alcuni OS
+      # WATCHPACK_POLLING: "true"
+    restart: unless-stopped

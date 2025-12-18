@@ -1,0 +1,360 @@
+{
+  "last_update": "2025-12-05T20:00:00Z",
+  "tasks": [
+    {
+      "id": "FN-12",
+      "name": "Fix Auction Abandonment & Real-time Updates",
+      "status": "completed",
+      "subtasks": [
+        {
+          "id": "FN-12.1",
+          "name": "Fix Real-time Updates (CORS & Socket URL)",
+          "status": "completed"
+        },
+        {
+          "id": "FN-12.2",
+          "name": "Fix Auction Abandonment (Database Constraints)",
+          "status": "completed"
+        },
+        {
+          "id": "FN-12.3",
+          "name": "Fix Infinite Compliance Loop",
+          "status": "completed"
+        },
+        {
+          "id": "FN-12.4",
+          "name": "Fix Default Bid Amount (Active Auctions)",
+          "status": "completed"
+        }
+      ]
+    },
+    {
+      "id": "FN-13",
+      "name": "Implement SSR for Auction Page",
+      "status": "completed",
+      "subtasks": [
+        {
+          "id": "FN-13.1",
+          "name": "Refactor Service Layer for SSR",
+          "status": "completed"
+        },
+        {
+          "id": "FN-13.2",
+          "name": "Update Auction Page Server Component",
+          "status": "completed"
+        },
+        {
+          "id": "FN-13.3",
+          "name": "Fix Type Errors in Client Components",
+          "status": "completed"
+        }
+      ]
+    },
+    {
+      "id": "FN-14",
+      "name": "Fix Real-time Updates & UI Optimization",
+      "status": "completed",
+      "subtasks": [
+        {
+          "id": "FN-14.1",
+          "name": "Fix Socket Room Joining (Server-side)",
+          "status": "completed"
+        },
+        {
+          "id": "FN-14.2",
+          "name": "Fix Client-side Crash (Data Parsing)",
+          "status": "completed"
+        },
+        {
+          "id": "FN-14.3",
+          "name": "Optimize Start Auction Modal (Remove Blocking Refresh)",
+          "status": "completed"
+        }
+      ]
+    },
+    {
+      "id": "FN-15",
+      "name": "Implement Server Actions for Auctions",
+      "status": "completed",
+      "subtasks": [
+        {
+          "id": "FN-15.1",
+          "name": "Create Auction Server Actions",
+          "status": "completed"
+        },
+        {
+          "id": "FN-15.2",
+          "name": "Refactor Client Components to use Server Actions",
+          "status": "completed"
+        }
+      ]
+    },
+    {
+      "id": "FN-16",
+      "name": "Code Optimization & Cleanup",
+      "status": "completed",
+      "subtasks": [
+        {
+          "id": "FN-16.1",
+          "name": "Remove Debug Logging",
+          "status": "completed"
+        },
+        {
+          "id": "FN-16.2",
+          "name": "Migrate ResponseActionModal to Server Actions",
+          "status": "completed"
+        }
+      ]
+    },
+    {
+      "id": "FN-17",
+      "name": "Budget Verification & Bug Fixes",
+      "status": "completed",
+      "subtasks": [
+        {
+          "id": "FN-17.1",
+          "name": "Create Budget Debug Tools (API & UI)",
+          "status": "completed"
+        },
+        {
+          "id": "FN-17.2",
+          "name": "Identify Negative Locked Credits Bug",
+          "status": "completed"
+        },
+        {
+          "id": "FN-17.3",
+          "name": "Fix Double-Unlock in Bid Service",
+          "status": "completed"
+        },
+        {
+          "id": "FN-17.4",
+          "name": "Fix Incorrect Unlock in Auction Abandon",
+          "status": "completed"
+        }
+      ]
+    },
+    {
+      "id": "FN-18",
+      "name": "Fix Privacy Leaks (Locked Credits)",
+      "status": "completed",
+      "subtasks": [
+        {
+          "id": "FN-18.1",
+          "name": "Hide Locked Credits in ManagerColumn UI",
+          "status": "completed"
+        },
+        {
+          "id": "FN-18.2",
+          "name": "Sanitize Managers API Response",
+          "status": "completed"
+        },
+        {
+          "id": "FN-18.3",
+          "name": "Sanitize SSR Initial Data",
+          "status": "completed"
+        }
+      ]
+    },
+    {
+      "id": "FN-19",
+      "name": "Refine Players Page UI & Optimization",
+      "status": "completed",
+      "subtasks": [
+        {
+          "id": "FN-19.1",
+          "name": "Implement Compact PlayerFilterBar",
+          "status": "completed"
+        },
+        {
+          "id": "FN-19.2",
+          "name": "Update Player Cards with Pastel Colors",
+          "status": "completed"
+        },
+        {
+          "id": "FN-19.3",
+          "name": "Optimize API Performance (Fix N+1 Query)",
+          "status": "completed"
+        },
+        {
+          "id": "FN-19.4",
+          "name": "Fix Build Errors (Types & SQL)",
+          "status": "completed"
+        }
+      ]
+    },
+    {
+      "id": "FN-20",
+      "name": "Dashboard UI Improvements",
+      "status": "completed",
+      "subtasks": [
+        {
+          "id": "FN-20.1",
+          "name": "Refine ManagerColumn UI (Glassmorphism & Colors)",
+          "status": "completed"
+        },
+        {
+          "id": "FN-20.2",
+          "name": "Enhance AuctionRealtimeDisplay (Animations)",
+          "status": "completed"
+        },
+        {
+          "id": "FN-20.3",
+          "name": "Improve BiddingInterface Interactivity",
+          "status": "completed"
+        }
+      ]
+    },
+    {
+      "id": "FN-21",
+      "name": "Players Page Optimization (Pagination)",
+      "status": "completed",
+      "subtasks": [
+        {
+          "id": "FN-21.1",
+          "name": "Implement Server-Side Pagination API",
+          "status": "completed"
+        },
+        {
+          "id": "FN-21.2",
+          "name": "Implement Frontend Pagination Logic",
+          "status": "completed"
+        },
+        {
+          "id": "FN-21.3",
+          "name": "Fix Lint Errors",
+          "status": "completed"
+        }
+      ]
+    },
+    {
+      "id": "FN-22",
+      "name": "Enhance Penalty Visibility",
+      "status": "cancelled",
+      "subtasks": [
+        {
+          "id": "FN-22.1",
+          "name": "Add Explicit Penalty Box to Budget Grid in ManagerColumn",
+          "status": "reverted"
+        }
+      ]
+    },
+    {
+      "id": "FN-23",
+      "name": "Bulk Link Player Photos",
+      "status": "completed",
+      "subtasks": [
+        {
+          "id": "FN-23.1",
+          "name": "Link Pisa Photos to DB Records",
+          "status": "completed"
+        }
+      ]
+    },
+    {
+      "id": "FN-24",
+      "name": "App Optimization & Next.js 16 Prep",
+      "status": "completed",
+      "subtasks": [
+        {
+          "id": "FN-24.1",
+          "name": "Enable React Compiler (Experimental)",
+          "status": "completed"
+        }
+      ]
+    },
+    {
+      "id": "FN-25",
+      "name": "Handle Empty Database Scenario",
+      "status": "completed",
+      "subtasks": [
+        {
+          "id": "FN-25.1",
+          "name": "Add Error Message for Empty Player DB",
+          "status": "completed"
+        }
+      ]
+    },
+    {
+      "id": "FN-26",
+      "name": "Fix Infinite Loop in Auction Page",
+      "status": "completed",
+      "subtasks": [
+        {
+          "id": "FN-26.1",
+          "name": "Correct useEffect Dependencies in AuctionPageContent",
+          "status": "completed"
+        }
+      ]
+    },
+    {
+      "id": "FN-27",
+      "name": "Fix Player Filtering Logic in Call Interface",
+      "status": "completed",
+      "subtasks": [
+        {
+          "id": "FN-27.1",
+          "name": "Map DB Fields to Frontend Interface",
+          "status": "completed"
+        }
+      ]
+    },
+    {
+      "id": "FN-28",
+      "name": "Improve Player Dropdown Usability",
+      "status": "completed",
+      "subtasks": [
+        {
+          "id": "FN-28.1",
+          "name": "Implement Infinite Scroll in Select Component",
+          "status": "completed"
+        }
+      ]
+    },
+    {
+      "id": "FN-29",
+      "name": "Fix User Preferences in Player Filters",
+      "status": "completed",
+      "subtasks": [
+        {
+          "id": "FN-29.1",
+          "name": "Join User Preferences in Player Service",
+          "status": "completed"
+        }
+      ]
+    },
+    {
+      "id": "FN-30",
+      "name": "Fix Auction Bid and Photo Bugs",
+      "status": "completed",
+      "subtasks": [
+        {
+          "id": "FN-30.1",
+          "name": "Fix Raise Button Functionality",
+          "status": "completed"
+        },
+        {
+          "id": "FN-30.2",
+          "name": "Fix Missing Player Photos with Fallback",
+          "status": "completed"
+        },
+        {
+          "id": "FN-30.3",
+          "name": "Fix Auto-Bid API 404 Error",
+          "status": "completed"
+        }
+      ]
+    },
+    {
+      "id": "FN-31",
+      "name": "Fix Counter-Bid Button Disabled State",
+      "status": "completed",
+      "subtasks": [
+        {
+          "id": "FN-31.1",
+          "name": "Allow Bidding without Response Timer (Null Check)",
+          "status": "completed"
+        }
+      ]
+    }
+  ]
+}

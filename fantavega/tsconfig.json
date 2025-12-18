@@ -1,0 +1,47 @@
+// starter_kit/tsconfig.json
+{
+  "compilerOptions": {
+    "lib": [
+      "dom",
+      "dom.iterable",
+      "esnext"
+    ],
+    "allowJs": true,
+    "skipLibCheck": true,
+    "strict": true,
+    "noEmit": true,
+    "esModuleInterop": true,
+    "module": "esnext",
+    "moduleResolution": "bundler", // "bundler" è moderno e corretto per Next.js
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "jsx": "preserve",
+    "incremental": true,
+    "plugins": [
+      {
+        "name": "next"
+      }
+    ],
+    // ---- INIZIO MODIFICA ----
+    "baseUrl": ".", // Aggiungi questa riga
+    // ---- FINE MODIFICA ----
+    "paths": {
+      "@/*": [
+        "./src/*"
+      ] // Questa riga è già corretta
+    },
+    "target": "ES2017" // Va bene, anche se Next.js spesso usa target più moderni come "esnext" o "ES2020"
+    // Ma se funziona per te, lascialo.
+  },
+  "include": [
+    "next-env.d.ts",
+    "**/*.ts",
+    "**/*.tsx",
+    ".next/types/**/*.ts",
+    "types/**/*.d.ts" // Questa riga è corretta se hai una cartella 'types' alla root
+  ],
+  "exclude": [
+    "node_modules",
+    "guide"
+  ]
+}

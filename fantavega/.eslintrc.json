@@ -1,0 +1,32 @@
+// .eslintrc.json
+{
+  "extends": [
+    "next/core-web-vitals",
+    "next/typescript",
+    "prettier"
+  ],
+  "plugins": [
+    "check-file"
+  ],
+  "ignorePatterns": [
+    "guide/**/*"
+  ],
+  "rules": {
+    "prefer-arrow-callback": [
+      "error"
+    ],
+    "prefer-template": [
+      "error"
+    ],
+    "check-file/filename-naming-convention": "off", // DISABILITATO - Non più necessario
+    "check-file/folder-naming-convention": "off", // DISABILITATO - Non più necessario
+    // Regola per variabili non usate: impostala a "warn" o aggiungi opzioni per ignorare quelle con underscore
+    "@typescript-eslint/no-unused-vars": [
+      "warn", // <<--- CAMBIATO DA "error" (se era error) A "warn"
+      {
+        "argsIgnorePattern": "^_", // Ignora argomenti che iniziano con _
+        "varsIgnorePattern": "^_" // Ignora variabili che iniziano con _
+      }
+    ]
+  }
+}
