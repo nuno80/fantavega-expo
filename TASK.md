@@ -1,29 +1,47 @@
 # Fantavega → Expo Migration
 
 ## Current Task
-- [x] Creare piano di implementazione dettagliato
+- [/] Implementare sistema aste real-time (MVP senza auto-bid)
 
 ## Checklist Migrazione
 
-### Fase 1: Setup Infrastruttura
+### Fase 1: Setup Infrastruttura ✅
 - [x] Inizializzare progetto Expo con Router (pnpm)
 - [x] Configurare Firebase (progetto + SDK)
 - [x] Setup NativeWind per styling
 - [x] Configurare EAS Build
 - [x] Installare best practices libs (FlashList, expo-image, Zustand, TanStack Query, Zod, react-hook-form)
 
-### Fase 2: Core Features (prima di Auth)
+### Fase 2: Core Features ✅
 - [x] Lista giocatori (FlatList + TanStack Query)
 - [x] Player Card component
 - [x] Ricerca giocatori
 - [x] Dashboard lega
-- [ ] Sistema aste real-time
+- [/] Sistema aste real-time (IN PROGRESS)
 
-### Fase 3: Autenticazione (dopo core)
+### Fase 2.5: Sistema Aste Real-Time (MVP) ✅
+- [x] `services/auction.service.ts` - operazioni Firebase
+- [x] `services/bid.service.ts` - logica offerte (NO auto-bid)
+- [x] `hooks/useAuction.ts` - listener singola asta
+- [x] `hooks/useAuctionTimer.ts` - timer sincronizzato
+- [x] `hooks/useLeagueAuctions.ts` - lista aste attive
+- [x] `components/auction/AuctionCard.tsx`
+- [x] `components/auction/BiddingInterface.tsx`
+- [x] `components/auction/AuctionTimer.tsx`
+- [x] Refactor `app/(tabs)/auctions.tsx`
+- [x] `app/auction/[id].tsx` - dettaglio asta
+
+### Fase 3: Autenticazione (FUTURO)
 - [ ] Implementare Firebase Auth
 - [ ] Creare flusso login/signup
 - [ ] Protezione route autenticate
 - [ ] Gestione ruoli (admin/manager)
+- [ ] Sostituire userId mock con auth reale
+
+### Fase 4: Auto-Bid System (FUTURO)
+- [ ] Logica auto-bid (eBay-style)
+- [ ] UI per impostare max bid
+- [ ] Notifiche quando superato
 
 ### Fase 3: Database e Modelli
 - [ ] Definire schema Firestore (dati strutturati)
