@@ -30,6 +30,24 @@
 - **tRPC/Hono RPC:** E2E type safety se backend TS → VIETATO interfacce manuali
 - **Form:** `react-hook-form` + `@hookform/resolvers/zod` → NO `useState` per form
 
+### ⚠️ GOTCHA: Firebase + Zod
+Firebase (Firestore/RTDB) **NON include campi con valore `null`** nel JSON restituito.
+Quindi i campi opzionali arrivano come `undefined`, non `null`.
+
+| ❌ Sbagliato | ✅ Corretto |
+|-------------|------------|
+| `z.string().nullable()` | `z.string().nullish()` |
+| Accetta solo `null` | Accetta `null` E `undefined` |
+
+```ts
+// Schema per dati Firebase
+const AuctionSchema = z.object({
+  playerName: z.string(),
+  playerPhotoUrl: z.string().nullish(), // ✅ campo opzionale
+  currentBidderId: z.string().nullish(), // ✅ può essere assente
+});
+```
+
 ## 4. NAVIGATION (Expo Router v5/v6)
 ```
 app/
