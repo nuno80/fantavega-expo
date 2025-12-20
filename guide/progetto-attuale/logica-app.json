@@ -1,0 +1,30 @@
+{
+  "last_update": "2025-12-18T22:00:00Z",
+  "task_completed": "Redesign Pagina Asta Mobile",
+  "feature_logic": {
+    "feature_name": "Auction Mobile Redesign",
+    "summary": "Rifacimento completo dell'interfaccia asta per mobile, passando da un layout a scorrimento orizzontale (desktop-style) a una navigazione a Tab con Bottom Sheet per le offerte.",
+    "architectural_pattern": "Tabbed Navigation con PagerView per swipe gestures + Bottom Sheet modale per interazioni critiche (bidding).",
+    "user_flow": [
+      "1. L'utente accede al dettaglio asta (`app/auction/[id].tsx`).",
+      "2. Visualizza la tab 'Live' con card giocatore e stato asta.",
+      "3. Può fare swipe per vedere 'La mia Rosa' (slot) o 'Altri' (lista manager).",
+      "4. Tappando su 'Fai offerta' si apre il Bottom Sheet.",
+      "5. L'offerta viene inviata tramite `bid.service`."
+    ],
+    "core_components_interaction": {
+      "app/auction/[id].tsx": "Container principale, gestisce stato Tabs e PagerView.",
+      "components/auction/AuctionLiveTab.tsx": "Tab principale con visualizzazione real-time asta.",
+      "components/auction/MyRosterTab.tsx": "Visualizzazione slot rosa utente (FlashList/SectionList).",
+      "components/auction/OtherManagersTab.tsx": "Lista riassuntiva avversari.",
+      "components/auction/BidBottomSheet.tsx": "Componente interattivo per piazzare offerte (Gorhom Bottom Sheet)."
+    },
+    "database_interactions": [
+      {
+        "table": "auctions",
+        "operation": "READ",
+        "description": "Lettura dati asta in tempo reale (via hook useAuction/Firebase)."
+      }
+    ]
+  }
+}

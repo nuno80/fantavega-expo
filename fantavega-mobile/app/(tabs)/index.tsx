@@ -3,6 +3,7 @@
 
 import { LeagueCard } from "@/components/leagues/LeagueCard";
 import { useLeagues } from "@/hooks/useLeague";
+import { useLeagueStore } from "@/stores/leagueStore";
 import type { League } from "@/types/schemas";
 import { router } from "expo-router";
 import {
@@ -16,8 +17,12 @@ import {
 
 export default function DashboardScreen() {
   const { data: leagues, isLoading, error, refetch, isRefetching } = useLeagues();
+  const { setCurrentLeague } = useLeagueStore();
 
   const handleLeaguePress = (league: League) => {
+    // Set current league in global store for use in other tabs (e.g., players)
+    setCurrentLeague(league);
+
     router.push({
       pathname: "/league/[id]",
       params: { id: league.id },

@@ -1,8 +1,10 @@
 // lib/firebase.ts
 // Firebase configuration and initialization
 
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { getApp, getApps, initializeApp } from "firebase/app";
-import { getAuth } from "firebase/auth";
+// @ts-ignore - Exists at runtime in RN environment
+import { getAuth, getReactNativePersistence, initializeAuth } from "firebase/auth";
 import { getDatabase } from "firebase/database";
 import { getFirestore } from "firebase/firestore";
 
@@ -21,8 +23,22 @@ const firebaseConfig = {
 // Initialize Firebase (singleton pattern)
 const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
 
-// Firebase services
-export const auth = getAuth(app);
+// Initialize Auth with AsyncStorage persistence
+// Check if auth is already initialized to prevent "auth/already-initialized" on HMR
+let authInstance;
+try {
+  authInstance = getReactNativePersistence ?
+    initializeAuth(app, { persistence: getReactNativePersistence(AsyncStorage) }) :
+    getAuth(app); // Fallback or if already initialized handled internally by some SDK versions
+} catch (e: any) {
+  if (e.code === 'auth/already-initialized') {
+    authInstance = getAuth(app);
+  } else {
+    throw e;
+  }
+}
+
+export const auth = authInstance;
 export const firestore = getFirestore(app);
 export const realtimeDb = getDatabase(app);
 

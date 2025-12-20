@@ -2,7 +2,7 @@
 // Impostazioni lega - Solo per Admin (creatore)
 
 import { useLeague, useLeagueParticipants } from "@/hooks/useLeague";
-import { removeParticipant, updateLeague } from "@/services/league.service";
+import { removeParticipant, updateLeague, updateLeagueStatus } from "@/services/league.service";
 import { useUserStore } from "@/stores/userStore";
 import { CreateLeagueFormSchema, type League } from "@/types/schemas";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -22,6 +22,15 @@ import {
 
 // Schema per update (solo campi modificabili)
 const UpdateLeagueSchema = CreateLeagueFormSchema.partial();
+
+// Status labels
+const STATUS_LABELS: Record<string, string> = {
+  participants_joining: "Iscrizioni aperte",
+  draft_active: "Asta in corso",
+  repair_active: "Riparazioni",
+  market_closed: "Mercato chiuso",
+  completed: "Completata",
+};
 
 export default function LeagueSettingsScreen() {
   const { id: leagueId } = useLocalSearchParams<{ id: string }>();
@@ -236,6 +245,120 @@ export default function LeagueSettingsScreen() {
               )}
             </Pressable>
           )}
+
+          {/* League Status Management */}
+          <View className="bg-dark-card rounded-xl p-4 mb-6">
+            <Text className="text-white font-semibold mb-2">📊 Stato Lega</Text>
+            <Text className="text-gray-400 text-sm mb-4">
+              Stato attuale: <Text className="text-primary-500 font-semibold">{STATUS_LABELS[league.status] ?? league.status}</Text>
+            </Text>
+
+            <View className="gap-2">
+              {/* Start Auction Button */}
+              {league.status === "participants_joining" && (
+                <Pressable
+                  onPress={() => {
+                    Alert.alert(
+                      "Avvia Asta",
+                      "Sei sicuro di voler avviare l'asta? I partecipanti non potranno più unirsi.",
+                      [
+                        { text: "Annulla", style: "cancel" },
+                        {
+                          text: "Avvia",
+                          style: "default",
+                          onPress: async () => {
+                            try {
+                              await updateLeagueStatus(leagueId!, "draft_active");
+                              await refetch();
+                              Alert.alert("✅ Asta Avviata", "L'asta è ora attiva!");
+                            } catch (error) {
+                              Alert.alert("Errore", "Impossibile avviare l'asta");
+                            }
+                          },
+                        },
+                      ]
+                    );
+                  }}
+                  className="bg-green-600 p-4 rounded-xl flex-row items-center justify-center active:opacity-80"
+                >
+                  <Text className="text-2xl mr-2">🚀</Text>
+                  <Text className="text-white font-bold text-lg">Avvia Asta</Text>
+                </Pressable>
+              )}
+
+              {/* Pause/Resume Auction */}
+              {league.status === "draft_active" && (
+                <Pressable
+                  onPress={() => {
+                    Alert.alert(
+                      "Chiudi Mercato",
+                      "Vuoi chiudere il mercato principale e passare alle riparazioni?",
+                      [
+                        { text: "Annulla", style: "cancel" },
+                        {
+                          text: "Chiudi",
+                          onPress: async () => {
+                            try {
+                              await updateLeagueStatus(leagueId!, "repair_active");
+                              await refetch();
+                              Alert.alert("Mercato Chiuso", "Ora siete in fase riparazioni");
+                            } catch (error) {
+                              Alert.alert("Errore", "Impossibile aggiornare stato");
+                            }
+                          },
+                        },
+                      ]
+                    );
+                  }}
+                  className="bg-amber-600 p-4 rounded-xl flex-row items-center justify-center active:opacity-80"
+                >
+                  <Text className="text-2xl mr-2">🔧</Text>
+                  <Text className="text-white font-bold">Passa a Riparazioni</Text>
+                </Pressable>
+              )}
+
+              {/* Complete League */}
+              {(league.status === "repair_active" || league.status === "draft_active") && (
+                <Pressable
+                  onPress={() => {
+                    Alert.alert(
+                      "Completa Lega",
+                      "Questa azione terminerà definitivamente la lega. Continuare?",
+                      [
+                        { text: "Annulla", style: "cancel" },
+                        {
+                          text: "Completa",
+                          style: "destructive",
+                          onPress: async () => {
+                            try {
+                              await updateLeagueStatus(leagueId!, "completed");
+                              await refetch();
+                              Alert.alert("Lega Completata", "La lega è stata archiviata");
+                            } catch (error) {
+                              Alert.alert("Errore", "Impossibile completare la lega");
+                            }
+                          },
+                        },
+                      ]
+                    );
+                  }}
+                  className="bg-gray-600 p-4 rounded-xl flex-row items-center justify-center active:opacity-80"
+                >
+                  <Text className="text-2xl mr-2">✅</Text>
+                  <Text className="text-white font-bold">Completa Lega</Text>
+                </Pressable>
+              )}
+
+              {/* Completed state info */}
+              {league.status === "completed" && (
+                <View className="bg-dark-bg p-4 rounded-xl">
+                  <Text className="text-gray-400 text-center">
+                    ✅ Questa lega è stata completata e archiviata
+                  </Text>
+                </View>
+              )}
+            </View>
+          </View>
 
           {/* Invite Code Section */}
           <View className="bg-dark-card rounded-xl p-4 mb-6">

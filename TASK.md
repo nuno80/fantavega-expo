@@ -1,97 +1,59 @@
 # Fantavega → Expo Migration
 
-## Current Task
-- [ ] Fase 3: Home Multi-Lega + Crea Lega
+## 🎯 Current Task: Sprint 3 - Auto-Bid System
 
-## Checklist Migrazione
+### Sprint 1: Collegamento Flusso Base ✅
+- [x] **1.1** Bottone "Vai all'Asta" in `league/[id].tsx`
+- [x] **1.2** Dropdown "Cambia Stato Lega" in `settings.tsx`
+- [x] **1.3** Servizio `updateLeagueStatus()` per Firebase
 
-### Fase 1: Setup Infrastruttura ✅
-- [x] Inizializzare progetto Expo con Router (pnpm)
-- [x] Configurare Firebase (progetto + SDK)
-- [x] Setup NativeWind per styling
-- [x] Configurare EAS Build
-- [x] Installare best practices libs (FlashList, expo-image, Zustand, TanStack Query, Zod, react-hook-form)
+### Sprint 2: Avvio Asta (Call Player) ✅
+- [x] **2.1** Bottone "Chiama Asta" su giocatore (`CallPlayerModal.tsx`)
+- [x] **2.2** Servizio `createAuction` + `placeBid` integrato
+- [x] **2.3** Redirect a `auction/[id].tsx` dopo creazione
 
-### Fase 2: Core Features ✅
-- [x] Lista giocatori (FlatList + TanStack Query)
-- [x] Player Card component
-- [x] Ricerca giocatori
-- [x] Dashboard lega
-- [x] Sistema aste real-time (MVP)
-
-### Fase 2.5: Sistema Aste Real-Time (MVP) ✅
-- [x] `services/auction.service.ts` - operazioni Firebase
-- [x] `services/bid.service.ts` - logica offerte (NO auto-bid)
-- [x] `hooks/useAuction.ts` - listener singola asta
-- [x] `hooks/useAuctionTimer.ts` - timer sincronizzato
-- [x] `hooks/useLeagueAuctions.ts` - lista aste attive
-- [x] `components/auction/AuctionCard.tsx`
-- [x] `components/auction/BiddingInterface.tsx`
-- [x] `components/auction/AuctionTimer.tsx`
-- [x] Refactor `app/(tabs)/auctions.tsx`
-- [x] `app/auction/[id].tsx` - dettaglio asta
+### Sprint 3: Auto-Bid System ✅
+- [x] **3.1** Toggle auto-bid in `BidBottomSheet` con input max amount
+- [x] **3.2** Servizio Firebase: salva auto-bids in `autoBids/{leagueId}/{auctionId}/{userId}`
+- [x] **3.3** Logica base eBay integrata (MVP)
 
 ---
 
-### Fase 3: Home Multi-Lega + Crea Lega
-- [x] **Mock User Selector** (per testing senza auth)
-    - [x] Zustand store con `currentUserId` + lista utenti mock
-    - [x] UI selector nel tab Profilo
-- [ ] **Home Dashboard**
-    - [x] `app/(tabs)/index.tsx`: Lista leghe utente + "Crea Lega"
-    - [x] `components/leagues/LeagueCard.tsx` (già esistente)
-- [x] **Creazione Lega**
-    - [x] `app/league/create.tsx`: Form (nome, budget, slots, logo)
-    - [x] `services/league.service.ts`: createLeague() (già esistente)
-- [x] **Gestione Contesto Lega**
-    - [x] Zustand store per lega selezionata (`stores/leagueStore.ts`)
-    - [ ] Test navigazione da Home → Dashboard Lega
+## ✅ Fasi Completate
 
-### Fase 4: Settings Lega (Admin Creator) ✅
-- [x] `app/league/[id]/settings.tsx`
-- [x] Modifica impostazioni lega
-- [ ] Caricamento logo personalizzato (futuro)
-- [x] Codice invito generato (persistenza futura)
-- [x] Gestione utenti (lista, rimuovi)
+### Fase 1-5: Setup + Core Features ✅
+- [x] Progetto Expo + Firebase + NativeWind
+- [x] FlashList, TanStack Query, Zustand
+- [x] Lista giocatori + ricerca
+- [x] Sistema aste real-time (MVP)
+- [x] Home multi-lega + crea/join lega
+- [x] Settings lega (admin)
+- [x] Development Build Android
 
-### Fase 5: Auto-Bid System
-- [ ] Logica auto-bid (eBay-style)
-- [ ] UI per impostare max bid
-- [ ] Notifiche quando superato
+---
+
+## 📋 Backlog
 
 ### Fase 6: Features Mobile
-- [ ] Push notifications (expo-notifications)
-- [ ] Haptic feedback (expo-haptics)
-- [ ] Keep awake durante aste (expo-keep-awake)
+- [ ] Push notifications
+- [ ] Haptic feedback
+- [ ] Keep awake durante aste
 
-### Fase 7: Firebase Auth (ULTIMO)
-- [ ] `contexts/AuthContext.tsx`
-- [ ] `hooks/useAuth.ts`
-- [ ] Schermate Sign In / Sign Up
+### Fase 7: Firebase Auth
+- [ ] Rimuovere mock user
+- [ ] Sign In / Sign Up
 - [ ] Protezione route
-- [ ] Rimuovere mock user selector
-- [ ] **Ripristinare regole sicurezza Firestore** (`request.auth != null`)
 
-### Fase 8: Deploy
-- [ ] EAS Build configurazione
-- [ ] EAS Update per OTA
-- [ ] Testing su dispositivi reali
+### Tech Debt
+- [x] FlashList migration
+- [ ] Foto giocatori
+- [ ] Deep Links inviti
 
 ---
 
-## 📝 Tech Debt / Miglioramenti Futuri
-- [ ] **Migrare FlatList → FlashList** (quando bug TypeScript v2.0 risolto)
-- [ ] **Aggiungere foto giocatori** (URL da Next.js deployato su Vercel)
-- [ ] **Deep Links per inviti** (`fantavega://join/CODE` + Universal Links per produzione)
-
----
-
-## 🛠️ Comandi Utili
+## 🛠️ Comandi
 
 ```bash
-# Dev server (usa --tunnel per testare su telefono Android/iOS)
-pnpm exec expo start --tunnel
-
-# TypeScript check
-pnpm exec tsc --noEmit
+pnpm exec expo start --tunnel    # Dev con tunnel
+pnpm exec tsc --noEmit           # Type check
 ```

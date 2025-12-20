@@ -1,24 +1,43 @@
 // app/(tabs)/players.tsx
-// Players screen with FlatList, TanStack Query, and search
+// Players screen with FlashList, TanStack Query, search, and auction initiation
 
+import { CallPlayerModal } from "@/components/auction/CallPlayerModal";
 import { PlayerCard } from "@/components/players/PlayerCard";
 import { usePlayers, usePlayerSearch } from "@/hooks/usePlayer";
+import { useLeagueStore } from "@/stores/leagueStore";
 import type { Player } from "@/types/schemas";
+import { FlashList } from "@shopify/flash-list";
 import { useState } from "react";
-import { ActivityIndicator, FlatList, Text, TextInput, View } from "react-native";
+import { ActivityIndicator, Text, TextInput, View } from "react-native";
 
 export default function PlayersScreen() {
   const [searchTerm, setSearchTerm] = useState("");
+  const [selectedPlayer, setSelectedPlayer] = useState<Player | null>(null);
+  const [isModalVisible, setIsModalVisible] = useState(false);
+
+  const { currentLeagueId, currentLeague } = useLeagueStore();
   const isSearching = searchTerm.length >= 2;
 
   // Use search query when searching, otherwise use all players
   const searchQuery = usePlayerSearch(searchTerm);
   const playersQuery = usePlayers();
 
-  // Handle player press
+  // Handle player press - open modal for auction
   const handlePlayerPress = (player: Player) => {
-    // TODO: Navigate to player detail / auction
-    console.log("Player pressed:", player.name);
+    if (!currentLeagueId) {
+      // No league selected - could show alert
+      console.log("No league selected");
+      return;
+    }
+
+    // Check if league is in auction mode
+    if (currentLeague?.status !== "draft_active" && currentLeague?.status !== "repair_active") {
+      console.log("League not in auction mode");
+      return;
+    }
+
+    setSelectedPlayer(player);
+    setIsModalVisible(true);
   };
 
   // Loading state
@@ -31,6 +50,9 @@ export default function PlayersScreen() {
   const players: Player[] = isSearching
     ? (searchQuery.data ?? [])
     : (playersQuery.data ?? []);
+
+  // Check if can start auction
+  const canStartAuction = currentLeague?.status === "draft_active" || currentLeague?.status === "repair_active";
 
   return (
     <View className="flex-1 bg-dark-bg">
@@ -45,6 +67,28 @@ export default function PlayersScreen() {
           autoCapitalize="none"
           autoCorrect={false}
         />
+
+        {/* League Context Banner */}
+        {currentLeague && (
+          <View className="mt-2 flex-row items-center justify-between rounded-lg bg-dark-card px-3 py-2">
+            <Text className="text-sm text-gray-400">
+              {currentLeague.name}
+            </Text>
+            <View className={`rounded-full px-2 py-0.5 ${canStartAuction ? "bg-green-600/20" : "bg-gray-600/20"}`}>
+              <Text className={`text-xs ${canStartAuction ? "text-green-400" : "text-gray-400"}`}>
+                {canStartAuction ? "🎯 Asta attiva" : "⏳ In attesa"}
+              </Text>
+            </View>
+          </View>
+        )}
+
+        {!currentLeague && (
+          <View className="mt-2 rounded-lg bg-amber-600/20 px-3 py-2">
+            <Text className="text-center text-sm text-amber-400">
+              Seleziona una lega dalla Home per chiamare giocatori all'asta
+            </Text>
+          </View>
+        )}
       </View>
 
       {/* Loading State */}
@@ -83,9 +127,9 @@ export default function PlayersScreen() {
         </View>
       )}
 
-      {/* Players List - using FlatList (FlashList has TypeScript issues) */}
+      {/* Players List - FlashList for better performance */}
       {!isLoading && !error && players.length > 0 && (
-        <FlatList
+        <FlashList
           data={players}
           renderItem={({ item }) => (
             <PlayerCard player={item} onPress={handlePlayerPress} />
@@ -94,6 +138,17 @@ export default function PlayersScreen() {
           contentContainerStyle={{ paddingBottom: 20 }}
         />
       )}
+
+      {/* Call Player Modal */}
+      <CallPlayerModal
+        visible={isModalVisible}
+        player={selectedPlayer}
+        leagueId={currentLeagueId}
+        onClose={() => {
+          setIsModalVisible(false);
+          setSelectedPlayer(null);
+        }}
+      />
     </View>
   );
 }

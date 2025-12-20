@@ -1,0 +1,33 @@
+{
+  "last_update": "2025-12-18T22:00:00Z",
+  "files": [
+    {
+      "path": "app/auction/[id].tsx",
+      "description": "Pagina dettaglio asta ridisegnata con Tab Navigation."
+    },
+    {
+      "path": "components/auction/AuctionLiveTab.tsx",
+      "description": "Tab visualizzazione asta live."
+    },
+    {
+      "path": "components/auction/MyRosterTab.tsx",
+      "description": "Tab gestione rosa personale."
+    },
+    {
+      "path": "components/auction/OtherManagersTab.tsx",
+      "description": "Tab lista altri manager."
+    },
+    {
+      "path": "components/auction/BidBottomSheet.tsx",
+      "description": "Bottom sheet per inserimento offerte."
+    },
+    {
+      "path": "lib/firebase.ts",
+      "description": "Configurazione Firebase con persistenza AsyncStorage."
+    },
+    {
+      "path": "app/_layout.tsx",
+      "description": "Root Layout aggiornato con GestureHandlerRootView."
+    }
+  ]
+}

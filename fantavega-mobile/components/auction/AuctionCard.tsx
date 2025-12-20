@@ -35,7 +35,7 @@ export const AuctionCard = ({
                 ? { uri: auction.playerPhotoUrl }
                 : require("@/assets/icon.png")
             }
-            style={{ width: 100, height: 100 }}
+            style={{ width: 90, height: 90 }}
             contentFit="cover"
           />
           {/* Role Badge */}
@@ -50,38 +50,43 @@ export const AuctionCard = ({
         </View>
 
         {/* Info */}
-        <View className="flex-1 justify-between p-3">
+        <View className="flex-1 p-3">
           {/* Header: Name + Team */}
-          <View>
-            <Text className="text-lg font-bold text-white" numberOfLines={1}>
+          <View className="mb-1">
+            <Text className="text-base font-bold text-white" numberOfLines={1}>
               {auction.playerName}
             </Text>
-            <Text className="text-sm text-gray-400">{auction.playerTeam}</Text>
+            <Text className="text-xs text-gray-400">{auction.playerTeam}</Text>
           </View>
 
-          {/* Current Bid */}
-          <View className="flex-row items-center justify-between">
+          {/* Bid Info - Stacked layout */}
+          <View className="flex-row items-end justify-between mt-1">
+            {/* Current Bid */}
             <View>
-              <Text className="text-xs text-gray-500">Offerta attuale</Text>
-              <Text className="text-xl font-bold text-primary-400">
-                {auction.currentBid} 💰
-              </Text>
+              <Text className="text-[10px] text-gray-500 uppercase">Offerta</Text>
+              <View className="flex-row items-center">
+                <Text className="text-lg font-bold text-primary-400">
+                  {auction.currentBid}
+                </Text>
+                <Text className="ml-1 text-sm">💰</Text>
+              </View>
             </View>
 
             {/* Current Bidder */}
-            {auction.currentBidderName && (
-              <View className="items-end">
-                <Text className="text-xs text-gray-500">Miglior offerente</Text>
-                <Text className="text-sm font-medium text-white" numberOfLines={1}>
-                  {auction.currentBidderName}
-                </Text>
-              </View>
-            )}
+            <View className="items-end flex-shrink">
+              <Text className="text-[10px] text-gray-500 uppercase">Leader</Text>
+              <Text
+                className="text-sm font-medium text-green-400"
+                numberOfLines={1}
+              >
+                {auction.currentBidderName || "—"}
+              </Text>
+            </View>
           </View>
         </View>
 
-        {/* Timer */}
-        <View className="justify-center pr-3">
+        {/* Timer - Right side */}
+        <View className="justify-center px-3 bg-dark-bg/50">
           <AuctionTimer scheduledEndTime={auction.scheduledEndTime} size="small" />
         </View>
       </View>

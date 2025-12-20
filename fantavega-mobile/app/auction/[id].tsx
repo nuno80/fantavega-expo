@@ -1,22 +1,24 @@
 // app/auction/[id].tsx
-// Dettaglio singola asta con bidding interface
-// Best Practice: Dynamic route, real-time updates, expo-image
+// Dettaglio singola asta - SOLO BIDDING
+// I tab Rosa/Manager sono ora nella pagina della lega
 
 import { AuctionTimer } from "@/components/auction/AuctionTimer";
-import { BiddingInterface } from "@/components/auction/BiddingInterface";
+import { BidBottomSheet } from "@/components/auction/BidBottomSheet";
 import { useAuction } from "@/hooks/useAuction";
-import { getBidHistory } from "@/services/bid.service";
+import { placeBid } from "@/services/bid.service";
+import { useUserStore } from "@/stores/userStore";
 import { PlayerRole, ROLE_COLORS } from "@/types";
-import { Bid } from "@/types/schemas";
 import { Image } from "expo-image";
-import { router, Stack, useLocalSearchParams } from "expo-router";
-import { useEffect, useState } from "react";
+import { Stack, useLocalSearchParams, useRouter } from "expo-router";
+import { Info } from "lucide-react-native";
+import { useState } from "react";
 import {
   ActivityIndicator,
+  Alert,
   Pressable,
   ScrollView,
   Text,
-  View,
+  View
 } from "react-native";
 
 export default function AuctionDetailScreen() {
@@ -24,31 +26,49 @@ export default function AuctionDetailScreen() {
     id: string;
     leagueId: string;
   }>();
+  const router = useRouter();
 
+  const { currentUserId, currentUser } = useUserStore();
   const { auction, isLoading, error } = useAuction(leagueId ?? null, auctionId ?? null);
-  const [bidHistory, setBidHistory] = useState<Bid[]>([]);
-  const [historyLoading, setHistoryLoading] = useState(false);
 
-  // Carica storico offerte
-  useEffect(() => {
-    if (!leagueId || !auctionId) return;
+  const [isBidSheetOpen, setIsBidSheetOpen] = useState(false);
+  const [isBidding, setIsBidding] = useState(false);
 
-    const loadHistory = async () => {
-      setHistoryLoading(true);
-      try {
-        const history = await getBidHistory(leagueId, auctionId);
-        setBidHistory(history);
-      } catch (err) {
-        console.error("Failed to load bid history:", err);
-      } finally {
-        setHistoryLoading(false);
+  const handlePlaceBid = async (amount: number, maxAmount?: number) => {
+    if (!leagueId || !auctionId || !auction) return;
+    setIsBidding(true);
+    try {
+      const result = await placeBid({
+        leagueId,
+        auctionId,
+        userId: currentUserId,
+        username: currentUser?.username ?? "Manager",
+        amount,
+        bidType: "manual",
+        maxAmount,
+      });
+
+      if (result.success) {
+        setIsBidSheetOpen(false);
+        if (maxAmount) {
+          Alert.alert("✅ Offerta + Auto-bid", `Offerta ${amount} con max ${maxAmount}`);
+        }
+      } else {
+        Alert.alert("Errore offerta", result.message);
       }
-    };
+    } catch (e) {
+      Alert.alert("Errore", "Impossibile piazzare l'offerta");
+    } finally {
+      setIsBidding(false);
+    }
+  };
 
-    loadHistory();
-  }, [leagueId, auctionId, auction?.currentBid]);
+  const handleQuickBid = async (increment: number) => {
+    if (!auction) return;
+    const newAmount = auction.currentBid + increment;
+    await handlePlaceBid(newAmount);
+  };
 
-  // Loading state
   if (isLoading) {
     return (
       <View className="flex-1 items-center justify-center bg-dark-bg">
@@ -57,51 +77,48 @@ export default function AuctionDetailScreen() {
     );
   }
 
-  // Error state
   if (error || !auction) {
     return (
       <View className="flex-1 items-center justify-center bg-dark-bg p-6">
-        <Text className="mb-4 text-4xl">❌</Text>
-        <Text className="text-center text-lg text-white">
-          {error?.message || "Asta non trovata"}
-        </Text>
+        <Text className="text-5xl mb-4">❌</Text>
+        <Text className="text-white text-lg font-semibold">Asta non trovata</Text>
         <Pressable
           onPress={() => router.back()}
           className="mt-6 rounded-xl bg-primary-600 px-6 py-3"
         >
-          <Text className="font-semibold text-white">Torna indietro</Text>
+          <Text className="text-white font-semibold">Torna indietro</Text>
         </Pressable>
       </View>
     );
   }
 
   const roleColor = ROLE_COLORS[auction.playerRole as PlayerRole] || "#6b7280";
+  const isHighestBidder = auction.currentBidderId === currentUserId;
+  const userBudget = 500; // TODO: get from participant data
 
   return (
-    <>
+    <View className="flex-1 bg-dark-bg">
       <Stack.Screen
         options={{
-          title: auction.playerName,
+          headerTitle: "",
           headerStyle: { backgroundColor: "#0f0f0f" },
           headerTintColor: "#fff",
         }}
       />
 
-      <ScrollView className="flex-1 bg-dark-bg">
-        {/* Player Header */}
+      <ScrollView className="flex-1" contentContainerStyle={{ paddingBottom: 120 }}>
+        {/* Player Card */}
         <View className="items-center p-6">
-          {/* Photo */}
-          <View className="relative mb-4">
+          <View className="relative">
             <Image
               source={
                 auction.playerPhotoUrl
                   ? { uri: auction.playerPhotoUrl }
                   : require("@/assets/icon.png")
               }
-              style={{ width: 150, height: 150, borderRadius: 75 }}
+              style={{ width: 140, height: 140, borderRadius: 70 }}
               contentFit="cover"
             />
-            {/* Role Badge */}
             <View
               className="absolute -bottom-2 left-1/2 -translate-x-1/2 rounded-full px-4 py-1"
               style={{ backgroundColor: roleColor }}
@@ -110,80 +127,104 @@ export default function AuctionDetailScreen() {
             </View>
           </View>
 
-          {/* Name & Team */}
-          <Text className="text-2xl font-bold text-white">
-            {auction.playerName}
-          </Text>
+          <Text className="mt-6 text-2xl font-bold text-white">{auction.playerName}</Text>
           <Text className="text-gray-400">{auction.playerTeam}</Text>
-
-          {/* Timer */}
-          <View className="mt-4">
-            <AuctionTimer scheduledEndTime={auction.scheduledEndTime} size="large" />
-          </View>
         </View>
 
-        {/* Current Bid Section */}
-        <View className="mx-4 mb-4 rounded-2xl bg-dark-card p-4">
-          <View className="flex-row items-center justify-between">
-            <View>
-              <Text className="text-sm text-gray-500">Offerta attuale</Text>
-              <Text className="text-3xl font-bold text-primary-400">
-                {auction.currentBid} 💰
-              </Text>
-            </View>
-            {auction.currentBidderName && (
-              <View className="items-end">
-                <Text className="text-sm text-gray-500">Miglior offerente</Text>
-                <Text className="text-lg font-semibold text-white">
-                  {auction.currentBidderName}
-                </Text>
-              </View>
+        {/* Timer */}
+        <View className="items-center mb-6">
+          <AuctionTimer scheduledEndTime={auction.scheduledEndTime} size="large" />
+        </View>
+
+        {/* Status Banner */}
+        <View className={`mx-6 mb-6 rounded-2xl p-5 ${isHighestBidder ? "bg-green-900/30" : "bg-dark-card"}`}>
+          <View className="flex-row items-center justify-center">
+            {isHighestBidder ? (
+              <>
+                <Text className="text-3xl mr-3">✅</Text>
+                <View>
+                  <Text className="text-lg font-bold text-green-400">Stai vincendo!</Text>
+                  <Text className="text-sm text-gray-400">Attendi la scadenza del timer</Text>
+                </View>
+              </>
+            ) : (
+              <>
+                <Info size={28} color="#818cf8" />
+                <View className="ml-3">
+                  <Text className="text-lg font-bold text-white">Fai un'offerta</Text>
+                  <Text className="text-sm text-gray-400">Leader: {auction.currentBidderName ?? "Nessuno"}</Text>
+                </View>
+              </>
             )}
           </View>
         </View>
 
-        {/* Bidding Interface */}
-        <View className="mx-4 mb-4">
-          <BiddingInterface
-            leagueId={leagueId!}
-            auctionId={auctionId!}
-            currentBid={auction.currentBid}
-            currentBidderId={auction.currentBidderId}
-          />
+        {/* Current Bid Display */}
+        <View className="mx-6 mb-6 rounded-2xl bg-dark-card p-5">
+          <Text className="text-center text-sm text-gray-400 uppercase tracking-wider">Offerta Attuale</Text>
+          <Text className="text-center text-4xl font-bold text-primary-400 my-2">
+            {auction.currentBid} 💰
+          </Text>
+          <Text className="text-center text-sm text-gray-500">
+            di {auction.currentBidderName ?? "Nessun offerente"}
+          </Text>
         </View>
 
-        {/* Bid History */}
-        <View className="mx-4 mb-8 rounded-2xl bg-dark-card p-4">
-          <Text className="mb-3 text-lg font-semibold text-white">
-            📜 Storico Offerte
-          </Text>
-
-          {historyLoading ? (
-            <ActivityIndicator size="small" color="#4f46e5" />
-          ) : bidHistory.length === 0 ? (
-            <Text className="text-center text-gray-400">
-              Nessuna offerta ancora
-            </Text>
-          ) : (
-            bidHistory.slice(0, 10).map((bid, index) => (
-              <View
-                key={`${bid.bidTime}-${index}`}
-                className="flex-row items-center justify-between border-b border-gray-800 py-2 last:border-b-0"
+        {/* Quick Bid Buttons */}
+        <View className="mx-6 mb-6 flex-row gap-3">
+          {[1, 5, 10].map((inc) => {
+            const newAmount = auction.currentBid + inc;
+            const canAfford = newAmount <= userBudget;
+            return (
+              <Pressable
+                key={inc}
+                onPress={() => handleQuickBid(inc)}
+                disabled={!canAfford || isBidding}
+                className={`flex-1 items-center justify-center rounded-xl py-4 ${canAfford ? "bg-indigo-600 active:opacity-80" : "bg-gray-700 opacity-50"}`}
               >
-                <View className="flex-row items-center">
-                  <Text className="text-white">{bid.username}</Text>
-                  {bid.bidType !== "manual" && (
-                    <View className="ml-2 rounded bg-gray-700 px-1.5 py-0.5">
-                      <Text className="text-xs text-gray-400">{bid.bidType}</Text>
-                    </View>
-                  )}
-                </View>
-                <Text className="font-bold text-primary-400">{bid.amount} 💰</Text>
-              </View>
-            ))
-          )}
+                <Text className="font-bold text-white text-lg">+{inc}</Text>
+                <Text className="text-xs text-gray-300">({newAmount})</Text>
+              </Pressable>
+            );
+          })}
+        </View>
+
+        {/* Budget Info */}
+        <View className="mx-6 flex-row justify-between rounded-xl bg-dark-card p-4">
+          <View className="items-center flex-1">
+            <Text className="text-xs text-gray-500 uppercase">Tuo Budget</Text>
+            <Text className="text-xl font-bold text-white">{userBudget}</Text>
+          </View>
+          <View className="w-px bg-gray-700" />
+          <View className="items-center flex-1">
+            <Text className="text-xs text-gray-500 uppercase">Max Rilancio</Text>
+            <Text className="text-xl font-bold text-white">{userBudget}</Text>
+          </View>
         </View>
       </ScrollView>
-    </>
+
+      {/* Bottom Action Button */}
+      <View className="absolute bottom-0 left-0 right-0 p-4 bg-dark-bg border-t border-gray-800">
+        <Pressable
+          onPress={() => setIsBidSheetOpen(true)}
+          className="rounded-xl bg-primary-600 p-4 active:opacity-80"
+        >
+          <Text className="text-center text-lg font-bold text-white">
+            💰 Fai un'offerta
+          </Text>
+        </Pressable>
+      </View>
+
+      {/* Bid Modal */}
+      <BidBottomSheet
+        isOpen={isBidSheetOpen}
+        onClose={() => setIsBidSheetOpen(false)}
+        playerName={auction.playerName}
+        currentBid={auction.currentBid}
+        userBudget={userBudget}
+        onPlaceBid={handlePlaceBid}
+        isLoading={isBidding}
+      />
+    </View>
   );
 }

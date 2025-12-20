@@ -111,6 +111,159 @@ function Component() {
 
 ---
 
+## 10. DEVELOPMENT BUILD & TUNNELING
+
+### Expo Go vs Development Build
+| Aspetto | Expo Go | Development Build |
+|---------|---------|-------------------|
+| Setup | Zero (scarica app) | ~10-15 min (EAS Build) |
+| Librerie native | Solo preinstallate | **Qualsiasi** |
+| Produzione | ❌ | ✅ Base per release |
+
+**⚠️ REGOLA:** Se usi librerie con codice nativo (reanimated 4.x, bottom-sheet 5.x, NativeWind 4.x), **DEVI usare Development Build**.
+
+### Creare Development Build
+```bash
+# Login a EAS
+eas login
+
+# Build Android
+eas build --profile development --platform android
+
+# Scarica APK
+eas build:download --latest --platform android
+```
+
+### Errori Comuni Prebuild
+| Errore | Causa | Soluzione |
+|--------|-------|-----------|
+| `ENOENT: notification-icon.png` | File mancante in `app.json` | Rimuovi config icon da plugins o crea il file |
+| `Cannot find module 'react-native-worklets/plugin'` | NativeWind 4.x + reanimated 3.x | Usa Development Build con reanimated 4.x |
+| `Worklets Mismatch` | Versione reanimated incompatibile | `expo install react-native-reanimated` per versione SDK |
+
+### Tunneling (WSL / Reti Complesse)
+```bash
+# Usa SEMPRE --tunnel su WSL
+pnpm exec expo start --tunnel
+
+# ⚠️ GOTCHA: Se URL contiene underscore (_), Android SSL fallisce!
+# Errore: java.net.IDN.toASCII - IllegalArgumentException
+
+# Soluzione: forza subdomain senza underscore
+EXPO_TUNNEL_SUBDOMAIN=myapp pnpm exec expo start --tunnel
+```
+
+### Dipendenze Native da Installare PRIMA del Build
+Se aggiungi queste librerie DOPO aver fatto il build, devi rifare il build:
+```bash
+# Librerie che richiedono native build
+pnpm add react-native-pager-view
+pnpm add @gorhom/bottom-sheet
+pnpm add lucide-react-native
+pnpm add react-native-svg  # Peer dep di lucide
+
+# Poi RIFARE il build!
+eas build --profile development --platform android
+```
+
+### Sviluppo Quotidiano (DOPO primo build)
+```bash
+# Avvia dev server (il build è già sul telefono)
+EXPO_TUNNEL_SUBDOMAIN=myapp pnpm exec expo start --tunnel
+
+# Modifiche JS → Hot reload automatico
+# Nuove librerie JS-only → pnpm install + reload app
+# Nuove librerie NATIVE → RIFARE EAS BUILD
+```
+
+---
+
+## 11. NEW ARCHITECTURE (FABRIC) - LEZIONI APPRESE
+
+### ⚠️ Il "Catch-22" di Fabric
+
+Con `newArchEnabled: true` alcune librerie potrebbero non essere compatibili:
+
+| Libreria | Problema con Fabric |
+|----------|---------------------|
+| `@gorhom/bottom-sheet` | `IllegalViewOperationException` crash |
+| `react-native-pager-view` | Crash su mount/unmount |
+| Altre librerie gesture-based | Possibili incompatibilità |
+
+Ma con `newArchEnabled: false`:
+
+| Libreria | Problema senza Fabric |
+|----------|----------------------|
+| `react-native-reanimated` v4+ | **RICHIEDE** Fabric |
+| `react-native-worklets` | **RICHIEDE** Fabric |
+
+### ✅ Soluzione: Componenti Nativi Fabric-Safe
+
+Quando una libreria causa crash con Fabric, **usa alternative native**:
+
+| ❌ Libreria Problematica | ✅ Alternativa Fabric-Safe |
+|--------------------------|---------------------------|
+| `@gorhom/bottom-sheet` | `Modal` nativo React Native |
+| `react-native-pager-view` | Rendering condizionale + tabs |
+| Gesture-based sheets | `Modal` + `KeyboardAvoidingView` |
+
+### Esempio: Modal al posto di BottomSheet
+
+```tsx
+// ❌ Crash con Fabric
+import BottomSheet from "@gorhom/bottom-sheet";
+<BottomSheet index={isOpen ? 0 : -1} snapPoints={["60%"]}>
+  <Content />
+</BottomSheet>
+
+// ✅ Funziona con Fabric
+import { Modal, KeyboardAvoidingView } from "react-native";
+<Modal visible={isOpen} animationType="slide" transparent>
+  <KeyboardAvoidingView behavior="padding">
+    <Pressable onPress={onClose} className="flex-1 bg-black/60" />
+    <View className="rounded-t-3xl bg-dark-bg p-6">
+      <Content />
+    </View>
+  </KeyboardAvoidingView>
+</Modal>
+```
+
+### Esempio: Tabs senza PagerView
+
+```tsx
+// ❌ Possibile crash con Fabric
+import PagerView from "react-native-pager-view";
+<PagerView onPageSelected={(e) => setTab(e.nativeEvent.position)}>
+  <Tab1 key="0" />
+  <Tab2 key="1" />
+</PagerView>
+
+// ✅ Funziona con Fabric
+const renderTab = () => {
+  switch (activeTab) {
+    case 0: return <Tab1 />;
+    case 1: return <Tab2 />;
+  }
+};
+<View className="flex-1">{renderTab()}</View>
+```
+
+### Debug: Identificare Problemi Fabric
+
+L'errore tipico è:
+```
+com.facebook.react.uimanager.IllegalViewOperationException
+at com.facebook.react.fabric.mounting.SurfaceMountingM...
+```
+
+**Step per risolvere:**
+1. Identifica quale componente causa il crash (guarda call stack)
+2. Verifica se la libreria supporta Fabric (docs/issues GitHub)
+3. Se non supportata: sostituisci con componente nativo RN
+4. Ricompila con `eas build --profile development --platform android`
+
+---
+
 ## ✅ CHECKLIST OUTPUT
 1. No `useMemo`/`useCallback` manuali?
 2. `AsyncStorage` → `expo-sqlite` o Zustand persist?
@@ -120,3 +273,6 @@ function Component() {
 6. Liste con `FlashList`?
 7. Server state con TanStack Query?
 8. Async data con `use()` + Suspense?
+9. **Librerie native? → Development Build obbligatorio**
+10. **WSL? → Usa `--tunnel` con subdomain senza underscore**
+11. **Fabric crash? → Sostituisci con componenti nativi RN**
