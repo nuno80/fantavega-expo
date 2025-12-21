@@ -28,7 +28,7 @@
 - [x] **8.3** Gestione `locked_credits` completa ✅
   - Blocco crediti su auto-bid
   - Sblocco su superamento/fine asta
-- [ ] **8.4** UI indicatori penalità nei ManagerColumn
+- [x] **8.4** UI indicatori penalità nei ManagerColumn
 
 ---
 
