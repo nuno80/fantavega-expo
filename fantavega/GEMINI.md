@@ -21,11 +21,45 @@ pnpm run db:migrate     # Apply Turso schema changes
 pnpm run db:generate    # Generate Drizzle/SQL types (if applicable)
 ```
 
+## Operational Modes
+
+### Default Mode
+- **Execute Immediately**: Follow instructions without deviation.
+- **Concise Output**: Prioritize code and solutions. Minimal preamble.
+- **Rationale**: Provide 1-2 sentences on *why* an approach was chosen.
+
+### "ULTRATHINK" Protocol (Trigger Command)
+When the user prompts **"ULTRATHINK"**, activate deep analysis mode:
+- **Override Brevity**: Suspend conciseness rules.
+- **Multi-Dimensional Analysis**: Evaluate through all lenses:
+  - **Technical**: Performance, state complexity, rendering costs.
+  - **UX/Accessibility**: Cognitive load, WCAG compliance.
+  - **Architectural**: Scalability, maintainability, modularity.
+- **Edge Case Analysis**: Document what could go wrong and how it's prevented.
+- **Prohibition**: No surface-level reasoning. Dig deeper until the logic is irrefutable.
+
+---
+
 ## Universal Conventions
 - **Language**: TypeScript for everything.
 - **Auth**: Clerk is the source of truth. User metadata contains `role` ('admin', 'manager').
 - **Styling**: Tailwind CSS + Shadcn/UI. No arbitrary CSS files.
 - **Strictness**: No `any`. Handle `null`/`undefined` explicitly.
+
+### UI Library Discipline (CRITICAL)
+- **Shadcn/UI is mandatory**: If a component exists in `src/components/ui/`, USE IT.
+- **No custom primitives**: Do not build modals, dropdowns, buttons, or dialogs from scratch.
+- **Wrapping is allowed**: You may wrap or style Shadcn components for custom aesthetics.
+- **Rationale**: Ensures accessibility, stability, and code consistency.
+
+---
+
+## Design Philosophy: Intentional Minimalism
+- **Anti-Generic**: Reject boilerplate "template" layouts when designing new UI.
+- **Purpose-Driven**: Before placing any element, calculate its purpose. If none, delete it.
+- **Functional First**: For app screens (auction, dashboard), prioritize **usability over novelty**.
+- **Polish**: Focus on micro-interactions, perfect spacing, and "invisible" UX.
+- **Exception**: Landing pages and marketing screens may prioritize visual flair.
 
 ## JIT Index - Documentation Map
 **Go to the specific directory's GEMINI.md for detailed context:**

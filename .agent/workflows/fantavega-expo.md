@@ -4,83 +4,67 @@ description: Riprende il lavoro sulla migrazione Fantavega Expo seguendo le best
 
 # Workflow: Ripresa Lavori Fantavega Expo
 
-Questo workflow permette di riprendere rapidamente il lavoro sulla migrazione Fantavega da Next.js a Expo.
+Riprende rapidamente il lavoro sulla migrazione Fantavega da Next.js a Expo.
 
-## Step 1: Leggi le Best Practices
+> ℹ️ `GEMINI.md` viene letto automaticamente all'avvio. Questo workflow legge i file operativi.
+
+## Step 1: Leggi Best Practices Tecniche
 // turbo
 ```bash
 cat /home/nuno/programmazione/fantavega-expo/expo-best.practices.md
 ```
 
-Ricorda i punti chiave:
+**Regole chiave:**
 - ❌ NO `useMemo`/`useCallback` (React Compiler attivo)
-- ❌ NO `AsyncStorage` → usa `expo-sqlite/kv-store`
-- ❌ NO `FlatList` → usa `FlashList`
-- ❌ NO `<Image/>` RN → usa `expo-image`
-- ✅ Zod per validazione dati esterni
-- ✅ TanStack Query per server state
-- ✅ react-hook-form per form
-- ✅ Expo Router con `typedRoutes: true`
-- ✅ Usa sempre **pnpm** come package manager
+- ❌ NO `AsyncStorage` → `expo-sqlite/kv-store`
+- ❌ NO `FlatList` → `FlashList`
+- ❌ NO `<Image/>` RN → `expo-image`
+- ❌ NO librerie web (Shadcn, Radix, MUI)
+- ✅ Zod per dati esterni
+- ✅ `Modal` nativo RN (Fabric-safe)
+- ✅ **pnpm** sempre
 
-## Step 2: Verifica lo Stato Attuale
+## Step 2: Leggi Regole di Gioco
+// turbo
+```bash
+cat /home/nuno/programmazione/fantavega-expo/GAME_RULES.md
+```
+
+## Step 3: Verifica Stato Attuale
 // turbo
 ```bash
 cat /home/nuno/programmazione/fantavega-expo/TASK.md
 ```
 
-## Step 3: Rivedi l'Implementation Plan
-// turbo
-```bash
-cat /home/nuno/programmazione/fantavega-expo/IMPLEMENTATION_PLAN.md
-```
-
 ## Step 4: Identifica il Prossimo Task
 
-Basandoti su TASK.md e IMPLEMENTATION_PLAN.md:
-1. Trova il primo item `[ ]` non completato
-2. Aggiorna TASK.md marcandolo come `[/]` in progress
+1. Trova il primo `[ ]` non completato in TASK.md
+2. Marcalo come `[/]` in progress
 3. Procedi con l'implementazione
 
 ## Step 5: Al Termine di Ogni Sub-Task
 
-Dopo aver completato un sub-task:
-1. Aggiorna `TASK.md`: marca il task come `[x]` completato
-2. Aggiorna `IMPLEMENTATION_PLAN.md` se necessario (nuove decisioni, modifiche)
-3. Verifica TypeScript:
+1. Aggiorna `TASK.md`: marca `[x]` completato
+2. Verifica TypeScript:
 // turbo
 ```bash
 cd /home/nuno/programmazione/fantavega-expo/fantavega-mobile && pnpm exec tsc --noEmit
 ```
 
-## Percorsi Chiave
+---
 
-| File | Percorso |
-|------|----------|
-| Best Practices | `/home/nuno/programmazione/fantavega-expo/expo-best.practices.md` |
-| Task Checklist | `/home/nuno/programmazione/fantavega-expo/TASK.md` |
-| Implementation Plan | `/home/nuno/programmazione/fantavega-expo/IMPLEMENTATION_PLAN.md` |
-| Progetto Expo | `/home/nuno/programmazione/fantavega-expo/fantavega-mobile/` |
-| Progetto Next.js (riferimento) | `/home/nuno/programmazione/fantavega-expo/fantavega/` |
-
-## Comandi pnpm Utili
+## Comandi Essenziali
 
 ```bash
-# Verifica TypeScript
+# Dev server (WSL con tunnel)
+cd /home/nuno/programmazione/fantavega-expo/fantavega-mobile && EXPO_TUNNEL_SUBDOMAIN=fantavega pnpm exec expo start --tunnel
+
+# Type check
 cd /home/nuno/programmazione/fantavega-expo/fantavega-mobile && pnpm exec tsc --noEmit
 
-# Avvia dev server
-cd /home/nuno/programmazione/fantavega-expo/fantavega-mobile && pnpm exec expo start
-
-# Installa dipendenza Expo-compatibile
+# Installa dipendenza Expo (nativa)
 cd /home/nuno/programmazione/fantavega-expo/fantavega-mobile && pnpm exec expo install <package>
 
-# Installa dipendenza normale
-cd /home/nuno/programmazione/fantavega-expo/fantavega-mobile && pnpm add <package>
+# Nuovo build (dopo librerie native)
+cd /home/nuno/programmazione/fantavega-expo/fantavega-mobile && eas build --profile development --platform android
 ```
-
-## Note Importanti
-
-- **Package Manager**: Usa SEMPRE `pnpm`, MAI npm o yarn
-- **Dipendenze Expo**: Usa `pnpm exec expo install` per pacchetti nativi
-- **Dipendenze JS-only**: Usa `pnpm add` per pacchetti JavaScript puri
