@@ -4,8 +4,6 @@
 
 import {
   checkBudgetClientSide,
-  MOCK_USER_ID,
-  MOCK_USERNAME,
   placeBid,
   placeQuickBid,
 } from "@/services/bid.service";
@@ -25,7 +23,10 @@ interface BiddingInterfaceProps {
   auctionId: string;
   currentBid: number;
   currentBidderId: string | null | undefined; // nullish da Zod schema
-  // Budget info (passato dal parent, in futuro da auth context)
+  // User info da AuthContext
+  userId: string;
+  username: string;
+  // Budget info
   userBudget?: number;
   userLockedCredits?: number;
   onBidPlaced?: () => void;
@@ -36,7 +37,9 @@ export const BiddingInterface = ({
   auctionId,
   currentBid,
   currentBidderId,
-  userBudget = 500, // Mock default
+  userId,
+  username,
+  userBudget = 500, // Default fallback
   userLockedCredits = 0,
   onBidPlaced,
 }: BiddingInterfaceProps) => {
@@ -44,7 +47,7 @@ export const BiddingInterface = ({
   const [isLoading, setIsLoading] = useState(false);
 
   // Calcola se l'utente sta già vincendo
-  const isCurrentWinner = currentBidderId === MOCK_USER_ID;
+  const isCurrentWinner = currentBidderId === userId;
   const myCurrentBid = isCurrentWinner ? currentBid : 0;
 
   // Quick bid amounts
@@ -77,8 +80,8 @@ export const BiddingInterface = ({
       const result = await placeQuickBid(
         leagueId,
         auctionId,
-        MOCK_USER_ID,
-        MOCK_USERNAME,
+        userId,
+        username,
         currentBid,
         increment
       );
@@ -120,8 +123,8 @@ export const BiddingInterface = ({
       const result = await placeBid({
         leagueId,
         auctionId,
-        userId: MOCK_USER_ID,
-        username: MOCK_USERNAME,
+        userId,
+        username,
         amount,
         bidType: "manual",
       });

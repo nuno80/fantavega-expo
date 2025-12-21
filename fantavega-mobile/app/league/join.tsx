@@ -1,11 +1,11 @@
 // app/league/join.tsx
 // Schermata per unirsi a una lega tramite codice invito
 
+import { useCurrentUser } from "@/contexts/AuthContext";
 import { addParticipant, getLeagueByInviteCode } from "@/services/league.service";
-import { useUserStore } from "@/stores/userStore";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useQueryClient } from "@tanstack/react-query";
-import { Stack, useRouter } from "expo-router";
+import { Href, Stack, useRouter } from "expo-router";
 import { useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import {
@@ -28,7 +28,7 @@ type JoinLeagueForm = z.infer<typeof JoinLeagueSchema>;
 export default function JoinLeagueScreen() {
   const router = useRouter();
   const queryClient = useQueryClient();
-  const { currentUserId, currentUser } = useUserStore();
+  const { currentUserId, currentUser } = useCurrentUser();
   const [isJoining, setIsJoining] = useState(false);
 
   const {
@@ -39,7 +39,7 @@ export default function JoinLeagueScreen() {
     resolver: zodResolver(JoinLeagueSchema),
     defaultValues: {
       code: "",
-      teamName: currentUser.username ?? "",
+      teamName: currentUser?.username ?? "",
     },
   });
 
@@ -74,7 +74,7 @@ export default function JoinLeagueScreen() {
       await queryClient.invalidateQueries({ queryKey: ["league-participants", league.id] });
 
       Alert.alert("Benvenuto!", `Sei entrato in "${league.name}"`, [
-        { text: "OK", onPress: () => router.replace(`/league/${league.id}`) },
+        { text: "OK", onPress: () => router.replace(`/league/${league.id}` as Href) },
       ]);
     } catch (error) {
       console.error("Join league error:", error);

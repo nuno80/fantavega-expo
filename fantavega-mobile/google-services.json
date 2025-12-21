@@ -1,0 +1,40 @@
+{
+  "project_info": {
+    "project_number": "201333299716",
+    "firebase_url": "https://fantavega-default-rtdb.europe-west1.firebasedatabase.app",
+    "project_id": "fantavega",
+    "storage_bucket": "fantavega.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:201333299716:android:e9b8a083f04f49ee977351",
+        "android_client_info": {
+          "package_name": "com.fantavega.app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "201333299716-qu4mu32m3gcob4e8loo3i3m3b4laul6r.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCT5Rhlfccr0t-ei_1BVxPRlwMXyPNwJkg"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "201333299716-qu4mu32m3gcob4e8loo3i3m3b4laul6r.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

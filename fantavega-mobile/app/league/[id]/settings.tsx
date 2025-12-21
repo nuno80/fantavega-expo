@@ -1,9 +1,9 @@
 // app/league/[id]/settings.tsx
 // Impostazioni lega - Solo per Admin (creatore)
 
+import { useCurrentUser } from "@/contexts/AuthContext";
 import { useLeague, useLeagueParticipants } from "@/hooks/useLeague";
 import { removeParticipant, updateLeague, updateLeagueStatus } from "@/services/league.service";
-import { useUserStore } from "@/stores/userStore";
 import { CreateLeagueFormSchema, type League } from "@/types/schemas";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as Clipboard from "expo-clipboard";
@@ -35,7 +35,7 @@ const STATUS_LABELS: Record<string, string> = {
 export default function LeagueSettingsScreen() {
   const { id: leagueId } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
-  const { currentUserId } = useUserStore();
+  const { currentUserId } = useCurrentUser();
 
   const { data: league, isLoading, refetch } = useLeague(leagueId ?? "");
   const { data: participants, refetch: refetchParticipants } = useLeagueParticipants(leagueId ?? "");

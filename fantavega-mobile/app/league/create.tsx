@@ -1,12 +1,12 @@
 // app/league/create.tsx
 // Screen per creare una nuova lega
 
+import { useCurrentUser } from "@/contexts/AuthContext";
 import { createLeague } from "@/services/league.service";
-import { useUserStore } from "@/stores/userStore";
 import { CreateLeagueFormSchema, type CreateLeagueForm } from "@/types/schemas";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useQueryClient } from "@tanstack/react-query";
-import { useRouter } from "expo-router";
+import { Href, useRouter } from "expo-router";
 import { useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import {
@@ -22,7 +22,7 @@ import {
 export default function CreateLeagueScreen() {
   const router = useRouter();
   const queryClient = useQueryClient();
-  const { currentUserId } = useUserStore();
+  const { currentUserId } = useCurrentUser();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const {
@@ -62,7 +62,7 @@ export default function CreateLeagueScreen() {
       await queryClient.invalidateQueries({ queryKey: ["leagues"] });
 
       Alert.alert("Successo!", `Lega creata!\nCodice invito: ${inviteCode}`, [
-        { text: "OK", onPress: () => router.replace(`/league/${leagueId}`) },
+        { text: "OK", onPress: () => router.replace(`/league/${leagueId}` as Href) },
       ]);
     } catch (error) {
       Alert.alert("Errore", "Impossibile creare la lega");

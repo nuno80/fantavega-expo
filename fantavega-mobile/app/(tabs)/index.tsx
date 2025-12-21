@@ -5,7 +5,7 @@ import { LeagueCard } from "@/components/leagues/LeagueCard";
 import { useLeagues } from "@/hooks/useLeague";
 import { useLeagueStore } from "@/stores/leagueStore";
 import type { League } from "@/types/schemas";
-import { router } from "expo-router";
+import { Href, router } from "expo-router";
 import {
   ActivityIndicator,
   Pressable,
@@ -26,7 +26,7 @@ export default function DashboardScreen() {
     router.push({
       pathname: "/league/[id]",
       params: { id: league.id },
-    });
+    } as unknown as Href);
   };
 
   const handleCreateLeague = () => {

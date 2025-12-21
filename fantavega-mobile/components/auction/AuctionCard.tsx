@@ -12,14 +12,18 @@ interface AuctionCardProps {
   auctionId: string;
   auction: LiveAuction;
   onPress?: (auctionId: string) => void;
+  /** Importo auto-bid dell'utente corrente (visibile solo a lui) */
+  userAutoBidAmount?: number | null;
 }
 
 export const AuctionCard = ({
   auctionId,
   auction,
   onPress,
+  userAutoBidAmount,
 }: AuctionCardProps) => {
   const roleColor = ROLE_COLORS[auction.playerRole as PlayerRole] || "#6b7280";
+  const hasAutoBid = userAutoBidAmount != null && userAutoBidAmount > 0;
 
   return (
     <Pressable
@@ -58,6 +62,15 @@ export const AuctionCard = ({
             </Text>
             <Text className="text-xs text-gray-400">{auction.playerTeam}</Text>
           </View>
+
+          {/* Auto-Bid Badge - Solo visibile all'utente proprietario */}
+          {hasAutoBid && (
+            <View className="flex-row items-center rounded-full bg-amber-500/20 px-2 py-0.5 mb-1">
+              <Text className="text-xs font-medium text-amber-400">
+                🤖 Max: {userAutoBidAmount}
+              </Text>
+            </View>
+          )}
 
           {/* Bid Info - Stacked layout */}
           <View className="flex-row items-end justify-between mt-1">

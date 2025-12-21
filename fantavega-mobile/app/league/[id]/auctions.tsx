@@ -2,9 +2,10 @@
 // Tab Aste: lista aste attive della lega
 
 import { AuctionCard } from "@/components/auction/AuctionCard";
+import { useCurrentUser } from "@/contexts/AuthContext";
+import { useUserAutoBidsInLeague } from "@/hooks/useAutoBid";
 import { useLeague } from "@/hooks/useLeague";
 import { useLeagueAuctions } from "@/hooks/useLeagueAuctions";
-import { useUserStore } from "@/stores/userStore";
 import { FlashList } from "@shopify/flash-list";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { Plus, RefreshCw } from "lucide-react-native";
@@ -14,10 +15,11 @@ import { ActivityIndicator, Pressable, RefreshControl, Text, View } from "react-
 export default function AuctionsTab() {
   const { id: leagueId } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
-  const { currentUserId } = useUserStore();
+  const { currentUserId } = useCurrentUser();
 
   const { data: league } = useLeague(leagueId ?? "");
   const { auctionsList, isLoading } = useLeagueAuctions(leagueId ?? "");
+  const { autoBids } = useUserAutoBidsInLeague(leagueId ?? null, currentUserId ?? null);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   const isAdmin = league?.adminCreatorId === currentUserId;
@@ -91,6 +93,7 @@ export default function AuctionsTab() {
               auctionId={item.id}
               auction={item.auction}
               onPress={handleAuctionPress}
+              userAutoBidAmount={autoBids.get(item.id) ?? null}
             />
           )}
           refreshControl={

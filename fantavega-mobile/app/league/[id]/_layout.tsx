@@ -3,7 +3,7 @@
 // Usa Slot + tab manuali invece di Tabs component
 
 import { useLeague } from "@/hooks/useLeague";
-import { Slot, useLocalSearchParams, usePathname, useRouter } from "expo-router";
+import { Href, Slot, useLocalSearchParams, usePathname, useRouter } from "expo-router";
 import { Gavel, Settings, Users, UserSquare } from "lucide-react-native";
 import { useEffect } from "react";
 import { ActivityIndicator, Pressable, Text, View } from "react-native";
@@ -27,12 +27,12 @@ export default function LeagueTabLayout() {
   // Redirect a auctions se siamo sulla route base (senza tab specifico)
   useEffect(() => {
     if (pathname === `/league/${id}` && !isLoading) {
-      router.replace(`/league/${id}/auctions`);
+      router.replace(`/league/${id}/auctions` as Href);
     }
   }, [pathname, id, isLoading, router]);
 
   const handleTabPress = (tabName: string) => {
-    router.replace(`/league/${id}/${tabName}`);
+    router.replace(`/league/${id}/${tabName}` as Href);
   };
 
   if (isLoading) {
@@ -54,7 +54,7 @@ export default function LeagueTabLayout() {
           {league?.name ?? "Lega"}
         </Text>
         <Pressable
-          onPress={() => router.push(`/league/${id}/settings`)}
+          onPress={() => router.push(`/league/${id}/settings` as Href)}
           className="p-2"
         >
           <Settings size={22} color="#9ca3af" />

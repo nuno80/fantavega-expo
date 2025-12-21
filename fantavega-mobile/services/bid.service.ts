@@ -3,11 +3,14 @@
 // Best Practice: Validazione Zod, transazioni atomiche Firebase
 
 import { realtimeDb } from "@/lib/firebase";
+import { updateLockedCredits } from "@/services/budget.service";
+import { sendPushToUser } from "@/services/notification.service";
 import { Bid, BidSchema, LiveAuction, LiveAuctionSchema } from "@/types/schemas";
 import {
   get,
   push,
   ref,
+  remove,
   runTransaction,
   set
 } from "firebase/database";
@@ -31,6 +34,8 @@ interface PlaceBidResult {
   message: string;
   newBidId?: string;
   auction?: LiveAuction;
+  /** ID del bidder precedente che è stato superato (per notifiche) */
+  previousBidderId?: string | null;
 }
 
 interface BudgetCheckResult {
@@ -39,9 +44,43 @@ interface BudgetCheckResult {
   reason?: string;
 }
 
-// Mock user ID per development (da sostituire con Firebase Auth)
-export const MOCK_USER_ID = "mock_user_001";
-export const MOCK_USERNAME = "TestManager";
+// ============================================
+// LOCKED CREDITS HELPER
+// ============================================
+
+/**
+ * Ricalcola i locked credits totali per un utente
+ * somma tutti i maxAmount degli auto-bid attivi
+ */
+async function recalculateUserLockedCredits(
+  leagueId: string,
+  userId: string
+): Promise<void> {
+  // Recupera tutti gli auto-bid di tutte le aste della lega per questo utente
+  const allAutoBidsRef = ref(realtimeDb, `autoBids/${leagueId}`);
+  const snapshot = await get(allAutoBidsRef);
+
+  let totalLocked = 0;
+
+  if (snapshot.exists()) {
+    const data = snapshot.val();
+    // struttura: { auctionId: { userId: { maxAmount, isActive, ... } } }
+    for (const auctionData of Object.values(data)) {
+      const userAutoBid = (auctionData as Record<string, unknown>)[userId];
+      if (
+        userAutoBid &&
+        typeof userAutoBid === "object" &&
+        (userAutoBid as { isActive?: boolean }).isActive !== false
+      ) {
+        totalLocked += (userAutoBid as { maxAmount: number }).maxAmount || 0;
+      }
+    }
+  }
+
+  // Aggiorna Firestore
+  await updateLockedCredits(leagueId, userId, totalLocked);
+  console.log(`[BID] Updated locked credits for ${userId}: ${totalLocked}`);
+}
 
 // ============================================
 // BUDGET CHECK (Client-side ottimistico)
@@ -97,6 +136,11 @@ export const placeBid = async (
 
   const auctionRef = ref(realtimeDb, `auctions/${leagueId}/${auctionId}`);
 
+  // Variabile per catturare il bidder precedente (da usare per notifiche)
+  let previousBidderId: string | null = null;
+  let previousBidderName: string | null = null;
+  let playerName: string = "";
+
   try {
     // Transazione atomica per evitare race conditions
     const result = await runTransaction(auctionRef, (currentData) => {
@@ -126,6 +170,13 @@ export const placeBid = async (
       if (now >= auction.scheduledEndTime) {
         return undefined; // Asta scaduta
       }
+
+      // Cattura il bidder precedente per notifiche (se diverso dal nuovo bidder)
+      if (auction.currentBidderId && auction.currentBidderId !== userId) {
+        previousBidderId = auction.currentBidderId;
+        previousBidderName = auction.currentBidderName ?? null;
+      }
+      playerName = auction.playerName;
 
       // Aggiorna l'asta con la nuova offerta
       const updatedAuction: LiveAuction = {
@@ -166,8 +217,7 @@ export const placeBid = async (
     const validatedBid = BidSchema.parse(bidRecord);
     await push(bidsRef, validatedBid);
 
-    // Se c'è un auto-bid, salvalo PRIMA di registrare il bid
-    // Questo garantisce atomicità (auto-bid salvato insieme all'offerta)
+    // Se c'è un auto-bid, salvalo e aggiorna locked credits
     if (maxAmount && maxAmount > amount) {
       const autoBidRef = ref(realtimeDb, `autoBids/${leagueId}/${auctionId}/${userId}`);
       await set(autoBidRef, {
@@ -178,6 +228,26 @@ export const placeBid = async (
         createdAt: Date.now(),
         updatedAt: Date.now(),
       });
+
+      // Aggiorna locked credits calcolando TUTTI gli auto-bid attivi
+      await recalculateUserLockedCredits(leagueId, userId);
+    }
+
+    // ============================================
+    // PUSH NOTIFICATION: Bidder superato
+    // ============================================
+    if (previousBidderId) {
+      // Invia in background, non blocca il ritorno
+      sendPushToUser(previousBidderId, {
+        title: "⚠️ Offerta superata!",
+        body: `La tua offerta per ${playerName} è stata superata. Nuova offerta: ${amount} crediti`,
+        data: { type: "bid_surpassed", auctionId, leagueId },
+      }).catch((err) => console.warn("Push notification failed:", err));
+
+      // Sblocca i crediti del bidder superato (rimuovi il suo auto-bid)
+      const prevAutoBidRef = ref(realtimeDb, `autoBids/${leagueId}/${auctionId}/${previousBidderId}`);
+      await remove(prevAutoBidRef);
+      await recalculateUserLockedCredits(leagueId, previousBidderId);
     }
 
     return {
@@ -187,6 +257,7 @@ export const placeBid = async (
         : `Offerta di ${amount} crediti piazzata con successo!`,
       newBidId: newBidRef.key ?? undefined,
       auction: result.snapshot.val() as LiveAuction,
+      previousBidderId,
     };
   } catch (error) {
     console.error("Error placing bid:", error);

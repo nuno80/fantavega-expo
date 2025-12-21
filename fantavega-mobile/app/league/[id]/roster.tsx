@@ -2,10 +2,10 @@
 // Tab Rosa: mostra la rosa dell'utente corrente nella lega
 // Usa dati reali da Firebase Realtime Database
 
+import { useCurrentUser } from "@/contexts/AuthContext";
 import { useLeague } from "@/hooks/useLeague";
 import { useUserRoster } from "@/hooks/useUserRoster";
 import { RosterPlayer } from "@/services/roster.service";
-import { useUserStore } from "@/stores/userStore";
 import { PlayerRole, ROLE_COLORS } from "@/types";
 import { FlashList } from "@shopify/flash-list";
 import { useLocalSearchParams } from "expo-router";
@@ -36,7 +36,7 @@ type ListItem = RoleHeader | SlotItem;
 
 export default function RosterTab() {
   const { id: leagueId } = useLocalSearchParams<{ id: string }>();
-  const { currentUserId } = useUserStore();
+  const { currentUserId } = useCurrentUser();
   const { data: league, isLoading: isLeagueLoading } = useLeague(leagueId ?? "");
   const { roster, isLoading: isRosterLoading } = useUserRoster(leagueId, currentUserId);
   const [isRefreshing, setIsRefreshing] = useState(false);

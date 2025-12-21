@@ -1,9 +1,9 @@
 // components/auction/CallPlayerModal.tsx
 // Modal per avviare un'asta su un giocatore
 
+import { useCurrentUser } from "@/contexts/AuthContext";
 import { createAuction } from "@/services/auction.service";
 import { placeBid } from "@/services/bid.service";
-import { useUserStore } from "@/stores/userStore";
 import { ROLE_COLORS } from "@/types";
 import type { Player } from "@/types/schemas";
 import { useRouter } from "expo-router";
@@ -32,7 +32,7 @@ export function CallPlayerModal({
   onClose,
 }: CallPlayerModalProps) {
   const router = useRouter();
-  const { currentUserId, currentUser } = useUserStore();
+  const { currentUserId, currentUser } = useCurrentUser();
 
   const [bidAmount, setBidAmount] = useState("");
   const [isLoading, setIsLoading] = useState(false);

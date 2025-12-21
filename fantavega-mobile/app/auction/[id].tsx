@@ -4,13 +4,15 @@
 
 import { AuctionTimer } from "@/components/auction/AuctionTimer";
 import { BidBottomSheet } from "@/components/auction/BidBottomSheet";
+import { useCurrentUser } from "@/contexts/AuthContext";
 import { useAuction } from "@/hooks/useAuction";
+import { useUserAutoBid } from "@/hooks/useAutoBid";
 import { placeBid } from "@/services/bid.service";
-import { useUserStore } from "@/stores/userStore";
 import { PlayerRole, ROLE_COLORS } from "@/types";
 import { Image } from "expo-image";
+import { useKeepAwake } from "expo-keep-awake";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
-import { Info } from "lucide-react-native";
+import { Bot, Info } from "lucide-react-native";
 import { useState } from "react";
 import {
   ActivityIndicator,
@@ -28,11 +30,21 @@ export default function AuctionDetailScreen() {
   }>();
   const router = useRouter();
 
-  const { currentUserId, currentUser } = useUserStore();
+  const { currentUserId, currentUser } = useCurrentUser();
   const { auction, isLoading, error } = useAuction(leagueId ?? null, auctionId ?? null);
+
+  // Auto-bid dell'utente per questa asta
+  const { maxAmount: userAutoBidMax, isActive: hasActiveAutoBid } = useUserAutoBid(
+    leagueId ?? null,
+    auctionId ?? null,
+    currentUserId
+  );
 
   const [isBidSheetOpen, setIsBidSheetOpen] = useState(false);
   const [isBidding, setIsBidding] = useState(false);
+
+  // Mantieni lo schermo acceso durante la visualizzazione dell'asta
+  useKeepAwake();
 
   const handlePlaceBid = async (amount: number, maxAmount?: number) => {
     if (!leagueId || !auctionId || !auction) return;
@@ -160,7 +172,7 @@ export default function AuctionDetailScreen() {
         </View>
 
         {/* Current Bid Display */}
-        <View className="mx-6 mb-6 rounded-2xl bg-dark-card p-5">
+        <View className="mx-6 mb-4 rounded-2xl bg-dark-card p-5">
           <Text className="text-center text-sm text-gray-400 uppercase tracking-wider">Offerta Attuale</Text>
           <Text className="text-center text-4xl font-bold text-primary-400 my-2">
             {auction.currentBid} 💰
@@ -169,6 +181,20 @@ export default function AuctionDetailScreen() {
             di {auction.currentBidderName ?? "Nessun offerente"}
           </Text>
         </View>
+
+        {/* Auto-Bid Indicator */}
+        {hasActiveAutoBid && userAutoBidMax && (
+          <View className="mx-6 mb-6 rounded-2xl bg-indigo-900/30 p-4 flex-row items-center">
+            <Bot size={24} color="#818cf8" />
+            <View className="ml-3 flex-1">
+              <Text className="text-indigo-300 font-semibold">🤖 Auto-Bid Attivo</Text>
+              <Text className="text-indigo-400 text-sm">Max: {userAutoBidMax} crediti</Text>
+            </View>
+            <View className="bg-indigo-600/30 px-3 py-1 rounded-full">
+              <Text className="text-indigo-300 text-xs font-semibold">ATTIVO</Text>
+            </View>
+          </View>
+        )}
 
         {/* Quick Bid Buttons */}
         <View className="mx-6 mb-6 flex-row gap-3">
@@ -224,6 +250,7 @@ export default function AuctionDetailScreen() {
         userBudget={userBudget}
         onPlaceBid={handlePlaceBid}
         isLoading={isBidding}
+        existingAutoBid={userAutoBidMax}
       />
     </View>
   );

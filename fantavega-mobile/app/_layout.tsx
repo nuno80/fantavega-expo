@@ -1,3 +1,4 @@
+import { AuthProvider } from "@/contexts/AuthContext";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
@@ -30,61 +31,63 @@ export default function RootLayout() {
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <QueryClientProvider client={queryClient}>
-        <Suspense fallback={<LoadingFallback />}>
-          <StatusBar style={isDark ? "light" : "dark"} />
-          <Stack
-            screenOptions={{
-              headerStyle: {
-                backgroundColor: isDark ? "#1a1a2e" : "#ffffff",
-              },
-              headerTintColor: isDark ? "#ffffff" : "#1a1a2e",
-              headerTitleStyle: {
-                fontWeight: "bold",
-              },
-              contentStyle: {
-                backgroundColor: isDark ? "#0f0f1a" : "#f5f5f5",
-              },
-            }}
-          >
-            <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-            <Stack.Screen name="(auth)" options={{ headerShown: false }} />
-            <Stack.Screen
-              name="auction/[id]"
-              options={{
-                title: "Asta",
-                presentation: "modal",
+      <AuthProvider>
+        <QueryClientProvider client={queryClient}>
+          <Suspense fallback={<LoadingFallback />}>
+            <StatusBar style={isDark ? "light" : "dark"} />
+            <Stack
+              screenOptions={{
+                headerStyle: {
+                  backgroundColor: isDark ? "#1a1a2e" : "#ffffff",
+                },
+                headerTintColor: isDark ? "#ffffff" : "#1a1a2e",
+                headerTitleStyle: {
+                  fontWeight: "bold",
+                },
+                contentStyle: {
+                  backgroundColor: isDark ? "#0f0f1a" : "#f5f5f5",
+                },
               }}
-            />
-            <Stack.Screen
-              name="league/[id]"
-              options={{
-                title: "Lega",
-              }}
-            />
-            <Stack.Screen
-              name="league/create"
-              options={{
-                title: "Crea Lega",
-                presentation: "modal",
-              }}
-            />
-            <Stack.Screen
-              name="league/[id]/settings"
-              options={{
-                title: "Impostazioni",
-              }}
-            />
-            <Stack.Screen
-              name="league/join"
-              options={{
-                title: "Unisciti",
-                presentation: "modal",
-              }}
-            />
-          </Stack>
-        </Suspense>
-      </QueryClientProvider>
+            >
+              <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+              <Stack.Screen name="(auth)" options={{ headerShown: false }} />
+              <Stack.Screen
+                name="auction/[id]"
+                options={{
+                  title: "Asta",
+                  presentation: "modal",
+                }}
+              />
+              <Stack.Screen
+                name="league/[id]"
+                options={{
+                  title: "Lega",
+                }}
+              />
+              <Stack.Screen
+                name="league/create"
+                options={{
+                  title: "Crea Lega",
+                  presentation: "modal",
+                }}
+              />
+              <Stack.Screen
+                name="league/[id]/settings"
+                options={{
+                  title: "Impostazioni",
+                }}
+              />
+              <Stack.Screen
+                name="league/join"
+                options={{
+                  title: "Unisciti",
+                  presentation: "modal",
+                }}
+              />
+            </Stack>
+          </Suspense>
+        </QueryClientProvider>
+      </AuthProvider>
     </GestureHandlerRootView>
   );
 }

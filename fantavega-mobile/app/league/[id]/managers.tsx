@@ -3,8 +3,8 @@
 // Visualizza budget, slot riempiti e info di ogni manager
 
 import { OtherManagersTab } from "@/components/auction/OtherManagersTab";
+import { useCurrentUser } from "@/contexts/AuthContext";
 import { useLeagueParticipants } from "@/hooks/useLeague";
-import { useUserStore } from "@/stores/userStore";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useMemo } from "react";
 import { ActivityIndicator, Text, View } from "react-native";
@@ -12,7 +12,7 @@ import { ActivityIndicator, Text, View } from "react-native";
 export default function ManagersTab() {
   const { id: leagueId } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
-  const { currentUserId } = useUserStore();
+  const { currentUserId } = useCurrentUser();
 
   const { data: participants, isLoading } = useLeagueParticipants(leagueId ?? "");
 
