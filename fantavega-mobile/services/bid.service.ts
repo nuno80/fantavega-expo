@@ -269,11 +269,8 @@ export const placeBid = async (
       previousBidderName = auction.currentBidderName ?? null;
     }
 
-    // Prepara l'update
-    const newScheduledEndTime =
-      auction.scheduledEndTime - now < 5 * 60 * 1000
-        ? now + 5 * 60 * 1000 // Reset timer anti-snipe
-        : auction.scheduledEndTime;
+    // Prepara l'update - Reset timer a 24 ore su ogni offerta
+    const newScheduledEndTime = now + 24 * 60 * 60 * 1000; // Always reset to 24h
 
     // Usa update() invece di runTransaction() per evitare problemi con dati appena creati
     await update(auctionRef, {
@@ -478,6 +475,44 @@ export const placeQuickBid = async (
     amount: newAmount,
     bidType: "quick",
   });
+};
+
+// ============================================
+// SET AUTO-BID (standalone, senza piazzare offerta)
+// ============================================
+
+interface SetAutoBidParams {
+  leagueId: string;
+  auctionId: string;
+  userId: string;
+  username: string;
+  maxAmount: number;
+}
+
+/**
+ * Imposta o aggiorna un auto-bid per un'asta
+ * Può essere usato indipendentemente dal piazzare un'offerta
+ */
+export const setAutoBid = async (params: SetAutoBidParams): Promise<void> => {
+  const { leagueId, auctionId, userId, username, maxAmount } = params;
+
+  const autoBidRef = ref(realtimeDb, `autoBids/${leagueId}/${auctionId}/${userId}`);
+
+  console.log(`[AUTO-BID SET] Setting auto-bid for ${userId}: max=${maxAmount}`);
+
+  await set(autoBidRef, {
+    userId,
+    username,
+    maxAmount,
+    isActive: true,
+    createdAt: Date.now(),
+    updatedAt: Date.now(),
+  });
+
+  // Aggiorna locked credits
+  await recalculateUserLockedCredits(leagueId, userId);
+
+  console.log(`[AUTO-BID SET] Auto-bid set successfully for ${userId}`);
 };
 
 // ============================================

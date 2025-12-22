@@ -8,20 +8,23 @@ import { PlayerAvatar } from "@/components/PlayerAvatar";
 import { useCurrentUser } from "@/contexts/AuthContext";
 import { useAuction } from "@/hooks/useAuction";
 import { useUserAutoBid } from "@/hooks/useAutoBid";
-import { placeBid } from "@/services/bid.service";
+import { placeBid, setAutoBid } from "@/services/bid.service";
 import { PlayerRole, ROLE_COLORS } from "@/types";
 import { activateKeepAwakeAsync, deactivateKeepAwake } from "expo-keep-awake";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
-import { Bot, Info } from "lucide-react-native";
+import { Bot, Info, Settings2 } from "lucide-react-native";
 import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
+  Modal,
   Pressable,
   ScrollView,
   Text,
+  TextInput,
   View
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 export default function AuctionDetailScreen() {
   const { id: auctionId, leagueId } = useLocalSearchParams<{
@@ -42,6 +45,9 @@ export default function AuctionDetailScreen() {
 
   const [isBidSheetOpen, setIsBidSheetOpen] = useState(false);
   const [isBidding, setIsBidding] = useState(false);
+  const [isAutoBidModalOpen, setIsAutoBidModalOpen] = useState(false);
+  const [autoBidAmount, setAutoBidAmount] = useState("");
+  const insets = useSafeAreaInsets();
 
   // Mantieni lo schermo acceso durante la visualizzazione dell'asta
   // Wrapped in try-catch per evitare crash in Expo Go
@@ -91,6 +97,29 @@ export default function AuctionDetailScreen() {
     if (!auction) return;
     const newAmount = auction.currentBid + increment;
     await handlePlaceBid(newAmount);
+  };
+
+  const handleSetAutoBid = async () => {
+    if (!leagueId || !auctionId || !auction) return;
+    const maxAmount = parseInt(autoBidAmount, 10);
+    if (isNaN(maxAmount) || maxAmount <= auction.currentBid) {
+      Alert.alert("Errore", `L'auto-bid deve essere maggiore di ${auction.currentBid}`);
+      return;
+    }
+    try {
+      await setAutoBid({
+        leagueId,
+        auctionId,
+        userId: currentUserId,
+        username: currentUser?.username ?? "Manager",
+        maxAmount,
+      });
+      setIsAutoBidModalOpen(false);
+      setAutoBidAmount("");
+      Alert.alert("✅ Auto-Bid Attivato", `Il sistema offrirà automaticamente fino a ${maxAmount} crediti`);
+    } catch (e) {
+      Alert.alert("Errore", "Impossibile attivare auto-bid");
+    }
   };
 
   if (isLoading) {
@@ -239,16 +268,33 @@ export default function AuctionDetailScreen() {
         </View>
       </ScrollView>
 
-      {/* Bottom Action Button */}
-      <View className="absolute bottom-0 left-0 right-0 p-4 bg-dark-bg border-t border-gray-800">
-        <Pressable
-          onPress={() => setIsBidSheetOpen(true)}
-          className="rounded-xl bg-primary-600 p-4 active:opacity-80"
-        >
-          <Text className="text-center text-lg font-bold text-white">
-            💰 Fai un'offerta
-          </Text>
-        </Pressable>
+      {/* Bottom Action Buttons with Safe Area */}
+      <View
+        className="absolute bottom-0 left-0 right-0 p-4 bg-dark-bg border-t border-gray-800"
+        style={{ paddingBottom: Math.max(insets.bottom, 16) }}
+      >
+        <View className="flex-row gap-3">
+          {/* Auto-Bid Button */}
+          <Pressable
+            onPress={() => {
+              setAutoBidAmount(userAutoBidMax ? String(userAutoBidMax) : String((auction?.currentBid ?? 0) + 10));
+              setIsAutoBidModalOpen(true);
+            }}
+            className="rounded-xl bg-indigo-700 p-4 active:opacity-80 items-center justify-center"
+          >
+            <Bot size={24} color="#fff" />
+          </Pressable>
+
+          {/* Main Bid Button */}
+          <Pressable
+            onPress={() => setIsBidSheetOpen(true)}
+            className="flex-1 rounded-xl bg-primary-600 p-4 active:opacity-80"
+          >
+            <Text className="text-center text-lg font-bold text-white">
+              💰 Fai un'offerta
+            </Text>
+          </Pressable>
+        </View>
       </View>
 
       {/* Bid Modal */}
@@ -262,6 +308,72 @@ export default function AuctionDetailScreen() {
         isLoading={isBidding}
         existingAutoBid={userAutoBidMax}
       />
+
+      {/* Auto-Bid Modal */}
+      <Modal
+        visible={isAutoBidModalOpen}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setIsAutoBidModalOpen(false)}
+      >
+        <Pressable
+          className="flex-1 bg-black/70 items-center justify-center"
+          onPress={() => setIsAutoBidModalOpen(false)}
+        >
+          <Pressable
+            className="bg-dark-card rounded-2xl p-6 mx-6 w-80"
+            onPress={() => { }} // Prevent close on inner tap
+          >
+            <View className="flex-row items-center mb-4">
+              <Bot size={28} color="#818cf8" />
+              <Text className="text-white text-xl font-bold ml-3">Auto-Bid</Text>
+            </View>
+
+            <Text className="text-gray-400 mb-4">
+              Imposta il massimo che sei disposto a pagare. Il sistema offrirà automaticamente per te.
+            </Text>
+
+            <Text className="text-gray-500 text-sm mb-2">
+              Offerta attuale: {auction.currentBid} crediti
+            </Text>
+
+            <TextInput
+              value={autoBidAmount}
+              onChangeText={setAutoBidAmount}
+              keyboardType="number-pad"
+              placeholder="Max crediti..."
+              placeholderTextColor="#6b7280"
+              className="bg-gray-800 text-white rounded-xl p-4 text-lg mb-4"
+            />
+
+            {hasActiveAutoBid && (
+              <View className="bg-indigo-900/40 rounded-xl p-3 mb-4 flex-row items-center">
+                <Settings2 size={16} color="#818cf8" />
+                <Text className="text-indigo-300 text-sm ml-2">
+                  Auto-bid attivo: max {userAutoBidMax}
+                </Text>
+              </View>
+            )}
+
+            <View className="flex-row gap-3">
+              <Pressable
+                onPress={() => setIsAutoBidModalOpen(false)}
+                className="flex-1 rounded-xl bg-gray-700 p-4"
+              >
+                <Text className="text-center text-white font-semibold">Annulla</Text>
+              </Pressable>
+              <Pressable
+                onPress={handleSetAutoBid}
+                className="flex-1 rounded-xl bg-indigo-600 p-4"
+              >
+                <Text className="text-center text-white font-bold">
+                  {hasActiveAutoBid ? "Aggiorna" : "Attiva"}
+                </Text>
+              </Pressable>
+            </View>
+          </Pressable>
+        </Pressable>
+      </Modal>
     </View>
   );
 }
