@@ -5,9 +5,12 @@
 import { AuctionTimer } from "@/components/auction/AuctionTimer";
 import { PlayerAvatar } from "@/components/PlayerAvatar";
 import { useCurrentUser } from "@/contexts/AuthContext";
+import { useComplianceCheck } from "@/hooks/useCompliance";
 import { useLeague } from "@/hooks/useLeague";
 import { useLeagueAuctions } from "@/hooks/useLeagueAuctions";
 import { useUserRoster } from "@/hooks/useUserRoster";
+
+
 import { RosterPlayer } from "@/services/roster.service";
 import { PlayerRole, ROLE_COLORS } from "@/types";
 import { LiveAuction } from "@/types/schemas";
@@ -48,7 +51,11 @@ export default function RosterTab() {
   const { auctionsList } = useLeagueAuctions(leagueId ?? null);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
+  // 🔴 TRIGGER COMPLIANCE CHECK all'accesso della pagina rosa
+  useComplianceCheck(leagueId ?? null, currentUserId, league?.status);
+
   const isLoading = isLeagueLoading || isRosterLoading;
+
 
   // Filtra le aste dove l'utente corrente è il miglior offerente
   const myWinningAuctions = auctionsList.filter(

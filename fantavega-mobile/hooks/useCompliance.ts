@@ -110,3 +110,86 @@ export function useMultipleComplianceStatus(
 
   return dataMap;
 }
+
+// ============================================
+// HOOK PER TRIGGER COMPLIANCE CHECK
+// ============================================
+
+export interface ComplianceCheckResult {
+  appliedPenaltyAmount: number;
+  isNowCompliant: boolean;
+  message: string;
+  gracePeriodEndTime?: number;
+  totalPenaltiesThisCycle: number;
+}
+
+interface UseComplianceCheckResult {
+  result: ComplianceCheckResult | null;
+  isChecking: boolean;
+  error: string | null;
+  recheck: () => Promise<void>;
+}
+
+/**
+ * Hook che triggera il controllo compliance al mount della pagina
+ * Questo è il trigger "lazy" per verificare e applicare penalità
+ *
+ * Usare in: pagina asta, rosa, manager
+ */
+export function useComplianceCheck(
+  leagueId: string | null,
+  userId: string | null,
+  leagueStatus: string | null | undefined,
+  options?: { enabled?: boolean }
+): UseComplianceCheckResult {
+  const [result, setResult] = useState<ComplianceCheckResult | null>(null);
+  const [isChecking, setIsChecking] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  // Solo trigger se la lega è in fase attiva
+  const isActivePhase = leagueStatus === "draft_active" || leagueStatus === "repair_active";
+  const enabled = options?.enabled !== false;
+
+  const performCheck = async () => {
+    if (!leagueId || !userId || !isActivePhase) {
+      return;
+    }
+
+    setIsChecking(true);
+    setError(null);
+
+    try {
+      // Import dinamico per evitare circular dependency
+      const { processComplianceAndPenalties } = await import("@/services/penalty.service");
+      const checkResult = await processComplianceAndPenalties(leagueId, userId);
+
+      setResult(checkResult);
+
+      console.log("[COMPLIANCE_CHECK] Result:", {
+        leagueId,
+        userId,
+        isCompliant: checkResult.isNowCompliant,
+        penalty: checkResult.appliedPenaltyAmount,
+      });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Errore controllo compliance";
+      setError(message);
+      console.error("[COMPLIANCE_CHECK] Error:", err);
+    } finally {
+      setIsChecking(false);
+    }
+  };
+
+  useEffect(() => {
+    if (enabled && leagueId && userId && isActivePhase) {
+      performCheck();
+    }
+  }, [leagueId, userId, isActivePhase, enabled]);
+
+  return {
+    result,
+    isChecking,
+    error,
+    recheck: performCheck,
+  };
+}

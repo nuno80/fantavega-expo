@@ -4,11 +4,12 @@
 
 import { OtherManagersTab } from "@/components/auction/OtherManagersTab";
 import { useCurrentUser } from "@/contexts/AuthContext";
-import { useMultipleComplianceStatus } from "@/hooks/useCompliance";
+import { useComplianceCheck, useMultipleComplianceStatus } from "@/hooks/useCompliance";
 import { useLeague, useLeagueParticipants } from "@/hooks/useLeague";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useMemo } from "react";
 import { ActivityIndicator, Text, View } from "react-native";
+
 
 // Grace period constant (deve matchare penalty.service.ts)
 const GRACE_PERIOD_MS = 60 * 60 * 1000;
@@ -21,7 +22,11 @@ export default function ManagersTab() {
   const { data: participants, isLoading } = useLeagueParticipants(leagueId ?? "");
   const { data: league } = useLeague(leagueId ?? "");
 
+  // 🔴 TRIGGER COMPLIANCE CHECK all'accesso della pagina manager
+  useComplianceCheck(leagueId ?? null, currentUserId, league?.status);
+
   // Estrai userIds degli altri partecipanti per fetch compliance
+
   const otherUserIds = useMemo(() => {
     if (!participants) return [];
     return participants

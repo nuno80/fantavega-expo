@@ -29,6 +29,10 @@
   - Blocco crediti su auto-bid
   - Sblocco su superamento/fine asta
 - [x] **8.4** UI indicatori penalità nei ManagerColumn
+- [x] **8.5** Trigger compliance nelle pagine ✅
+  - `useComplianceCheck` hook in `hooks/useCompliance.ts`
+  - Trigger automatico su: `auction/[id].tsx`, `roster.tsx`, `managers.tsx`
+
 
 ---
 

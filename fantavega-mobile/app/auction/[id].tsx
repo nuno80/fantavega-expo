@@ -8,8 +8,12 @@ import { PlayerAvatar } from "@/components/PlayerAvatar";
 import { useCurrentUser } from "@/contexts/AuthContext";
 import { useAuction } from "@/hooks/useAuction";
 import { useUserAutoBid } from "@/hooks/useAutoBid";
+import { useComplianceCheck } from "@/hooks/useCompliance";
+import { useLeague } from "@/hooks/useLeague";
 import { placeBid, setAutoBid } from "@/services/bid.service";
 import { PlayerRole, ROLE_COLORS } from "@/types";
+
+
 import { activateKeepAwakeAsync, deactivateKeepAwake } from "expo-keep-awake";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { Bot, Info, Settings2 } from "lucide-react-native";
@@ -43,11 +47,23 @@ export default function AuctionDetailScreen() {
     currentUserId
   );
 
+  // Recupera dati lega per check compliance
+  const { data: league } = useLeague(leagueId ?? "");
+
+  // 🔴 TRIGGER COMPLIANCE CHECK all'accesso della pagina asta
+  // Verifica se l'utente rispetta i requisiti di rosa e applica penalità se necessario
+  const { result: complianceResult } = useComplianceCheck(
+    leagueId ?? null,
+    currentUserId,
+    league?.status
+  );
+
   const [isBidSheetOpen, setIsBidSheetOpen] = useState(false);
   const [isBidding, setIsBidding] = useState(false);
   const [isAutoBidModalOpen, setIsAutoBidModalOpen] = useState(false);
   const [autoBidAmount, setAutoBidAmount] = useState("");
   const insets = useSafeAreaInsets();
+
 
   // Mantieni lo schermo acceso durante la visualizzazione dell'asta
   // Wrapped in try-catch per evitare crash in Expo Go
