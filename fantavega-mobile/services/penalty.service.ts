@@ -6,8 +6,8 @@ import { firestore, realtimeDb } from "@/lib/firebase";
 import { sendPushToUser } from "@/services/notification.service";
 import { getUserRoster } from "@/services/roster.service";
 import { League, LeagueSchema } from "@/types/schemas";
-import { doc, getDoc, updateDoc } from "firebase/firestore";
 import { get, ref, set } from "firebase/database";
+import { doc, getDoc, updateDoc } from "firebase/firestore";
 import { z } from "zod";
 
 // ============================================
@@ -24,11 +24,12 @@ const GRACE_PERIOD_MS = 60 * 60 * 1000; // 1 ora
 
 export const ComplianceStatusSchema = z.object({
   phaseIdentifier: z.string(),
-  complianceTimerStartAt: z.number().nullable(),
-  lastPenaltyAppliedAt: z.number().nullable(),
-  penaltiesAppliedThisCycle: z.number(),
+  complianceTimerStartAt: z.number().nullish(), // Firebase omette campi null, usa nullish
+  lastPenaltyAppliedAt: z.number().nullish(),   // Accetta null E undefined
+  penaltiesAppliedThisCycle: z.number().default(0),
 });
 export type ComplianceStatus = z.infer<typeof ComplianceStatusSchema>;
+
 
 export interface SlotRequirements {
   P: number;
@@ -72,12 +73,26 @@ function getPhaseIdentifier(leagueStatus: string, activeRoles: string | null): s
 
 /**
  * Calcola slot richiesti (N-1 per ruolo attivo)
+ * Se activeAuctionRoles è null/undefined durante fase attiva, default a tutti i ruoli
  */
 export function calculateRequiredSlots(league: League): SlotRequirements {
   const req: SlotRequirements = { P: 0, D: 0, C: 0, A: 0 };
 
-  const activeRoles = league.activeAuctionRoles;
-  if (!activeRoles || activeRoles.toUpperCase() === "NONE") {
+  let activeRoles = league.activeAuctionRoles;
+
+  // Se non specificato ma siamo in fase attiva, considera tutti i ruoli
+  // Questo evita che tutti risultino compliant per errore di configurazione
+  if (!activeRoles || activeRoles.trim() === "") {
+    // Durante le fasi di asta attiva, se non specificato considera tutti i ruoli
+    if (league.status === "draft_active" || league.status === "repair_active") {
+      activeRoles = "ALL";
+      console.log("[PENALTY] activeAuctionRoles non impostato, default a ALL per fase attiva");
+    } else {
+      return req; // In fasi non attive, nessun requisito
+    }
+  }
+
+  if (activeRoles.toUpperCase() === "NONE") {
     return req;
   }
 
@@ -90,8 +105,11 @@ export function calculateRequiredSlots(league: League): SlotRequirements {
   if (roles.includes("C")) req.C = Math.max(0, league.slotsC - 1);
   if (roles.includes("A")) req.A = Math.max(0, league.slotsA - 1);
 
+  console.log("[PENALTY] Required slots:", req, "for roles:", roles);
+
   return req;
 }
+
 
 /**
  * Verifica se utente è compliant (ha almeno N-1 per ruolo attivo)
@@ -155,8 +173,17 @@ export async function checkUserCompliance(
     A: roster.playersByRole.A.length,
   };
 
+  console.log("[PENALTY] Covered slots from roster:", coveredSlots);
+  console.log("[PENALTY] activeAuctionRoles used:", league.activeAuctionRoles ?? "ALL (defaulted)");
+
   // 4. Verifica compliance
-  const isCompliant = checkCompliance(requiredSlots, coveredSlots, league.activeAuctionRoles);
+  // NOTA: Se activeAuctionRoles è null, la funzione checkCompliance lo tratta come "nessun requisito"
+  // Dobbiamo passare "ALL" esplicitamente se siamo in fase attiva
+  const rolesForCheck = league.activeAuctionRoles ??
+    ((league.status === "draft_active" || league.status === "repair_active") ? "ALL" : null);
+
+  const isCompliant = checkCompliance(requiredSlots, coveredSlots, rolesForCheck);
+
 
   // 5. Calcola mancanti
   const missingByRole: Partial<SlotRequirements> = {};
@@ -247,6 +274,7 @@ export async function processComplianceAndPenalties(
   if (complianceStatus.complianceTimerStartAt === null) {
     complianceStatus.complianceTimerStartAt = now;
     await set(complianceRef, complianceStatus);
+    console.log("[PENALTY] Timer compliance AVVIATO a:", now, "salvato in:", `compliance/${leagueId}/${userId}`);
 
     return {
       appliedPenaltyAmount: 0,
@@ -258,7 +286,7 @@ export async function processComplianceAndPenalties(
   }
 
   // Timer attivo - calcola ore trascorse
-  const timerStart = complianceStatus.complianceTimerStartAt;
+  const timerStart = complianceStatus.complianceTimerStartAt!; // Non-null assert: arriva qui solo se timer attivo
   const elapsedMs = now - timerStart;
   const elapsedHours = Math.floor(elapsedMs / GRACE_PERIOD_MS);
 

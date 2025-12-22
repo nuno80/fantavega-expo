@@ -33,11 +33,20 @@ export function useComplianceStatus(
     const unsubscribe = onValue(
       complianceRef,
       (snapshot) => {
+        console.log("[USE_COMPLIANCE] Snapshot exists:", snapshot.exists(), "for:", `compliance/${leagueId}/${userId}`);
         if (!snapshot.exists()) {
           setData(null);
         } else {
-          const parsed = ComplianceStatusSchema.safeParse(snapshot.val());
-          setData(parsed.success ? parsed.data : null);
+          const rawData = snapshot.val();
+          console.log("[USE_COMPLIANCE] Raw data from Firebase:", rawData);
+          const parsed = ComplianceStatusSchema.safeParse(rawData);
+          if (parsed.success) {
+            console.log("[USE_COMPLIANCE] Parsed OK, timerStart:", parsed.data.complianceTimerStartAt);
+            setData(parsed.data);
+          } else {
+            console.error("[USE_COMPLIANCE] Parse failed:", parsed.error.issues);
+            setData(null);
+          }
         }
         setIsLoading(false);
       },
@@ -47,6 +56,7 @@ export function useComplianceStatus(
         setIsLoading(false);
       }
     );
+
 
     return () => unsubscribe();
   }, [leagueId, userId]);
