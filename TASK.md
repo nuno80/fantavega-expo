@@ -73,7 +73,7 @@
 ## 📋 Backlog Futuro
 
 ### Tech Debt
-- [ ] Foto giocatori (expo-image + fallback)
+- [/] Foto giocatori (PlayerAvatar ✅, upload pending)
 - [ ] Deep Links per inviti lega
 - [ ] Quick-bid UI migliorata
 

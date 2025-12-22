@@ -4,7 +4,7 @@
 
 import { useLeague } from "@/hooks/useLeague";
 import { Href, Slot, useLocalSearchParams, usePathname, useRouter } from "expo-router";
-import { Gavel, Settings, Users, UserSquare } from "lucide-react-native";
+import { ChevronLeft, Gavel, Settings, Shirt, Users, UserSquare } from "lucide-react-native";
 import { useEffect } from "react";
 import { ActivityIndicator, Pressable, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -12,6 +12,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 const TABS = [
   { name: "auctions", label: "Aste", icon: Gavel },
   { name: "roster", label: "Rosa", icon: UserSquare },
+  { name: "players", label: "Giocatori", icon: Shirt },
   { name: "managers", label: "Manager", icon: Users },
 ] as const;
 
@@ -48,7 +49,7 @@ export default function LeagueTabLayout() {
       {/* Header */}
       <View className="flex-row items-center justify-between px-4 py-3 bg-[#0f0f1a]">
         <Pressable onPress={() => router.back()} className="p-2">
-          <Text className="text-2xl text-white">←</Text>
+          <ChevronLeft size={28} color="#ffffff" />
         </Pressable>
         <Text className="text-lg font-bold text-white flex-1 text-center">
           {league?.name ?? "Lega"}

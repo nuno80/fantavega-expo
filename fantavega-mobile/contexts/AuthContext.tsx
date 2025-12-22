@@ -57,33 +57,32 @@ const DEV_MODE_ENABLED = __DEV__ && true; // ← Cambia a false per testare auth
  */
 export const DEV_MOCK_USERS = [
   {
-    // TODO: Sostituisci con UID reale da Firebase Console
-    uid: "REPLACE_WITH_DEV1_UID",
-    displayName: "Dev Manager 1",
+    uid: "RBjfydirZURMJvFuhgBl25c43sz1",
+    displayName: "Mario Rossi",
     email: "dev1@fantavega.test",
     photoURL: null,
   },
   {
-    uid: "REPLACE_WITH_DEV2_UID",
-    displayName: "Dev Manager 2",
+    uid: "Itn7H708ryQ01Fwx7GtgstGxHu53",
+    displayName: "Luigi Bianchi",
     email: "dev2@fantavega.test",
     photoURL: null,
   },
   {
-    uid: "REPLACE_WITH_DEV3_UID",
-    displayName: "Dev Manager 3",
+    uid: "tQ5tfhjrbShJT1ZOD8eR7rgQyR12",
+    displayName: "Paolo Verdi",
     email: "dev3@fantavega.test",
     photoURL: null,
   },
   {
-    uid: "REPLACE_WITH_DEV4_UID",
-    displayName: "Dev Manager 4",
+    uid: "4yqS1kT1CyZChzeWOWxKFfqJWno1",
+    displayName: "Andrea Neri",
     email: "dev4@fantavega.test",
     photoURL: null,
   },
   {
-    uid: "REPLACE_WITH_DEV5_UID",
-    displayName: "Dev Admin",
+    uid: "HRGpOMTGEfhHhaBpOhuwB03oOAs2",
+    displayName: "Marco Gialli",
     email: "dev5@fantavega.test",
     photoURL: null,
   },

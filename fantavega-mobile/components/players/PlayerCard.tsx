@@ -1,9 +1,9 @@
 // components/players/PlayerCard.tsx
 // Player card component with role colors and quotation
 
+import { PlayerAvatar } from "@/components/PlayerAvatar";
 import { ROLE_COLORS } from "@/types";
 import type { Player } from "@/types/schemas";
-import { Image } from "expo-image";
 import { Pressable, Text, View } from "react-native";
 
 interface PlayerCardProps {
@@ -20,20 +20,14 @@ export function PlayerCard({ player, onPress }: PlayerCardProps) {
       className="mx-4 mb-3 flex-row items-center rounded-xl bg-dark-card p-4 active:opacity-80"
     >
       {/* Player Photo */}
-      <View
-        className="mr-4 h-14 w-14 items-center justify-center overflow-hidden rounded-full"
-        style={{ backgroundColor: roleColor }}
-      >
-        {player.photoUrl ? (
-          <Image
-            source={{ uri: player.photoUrl }}
-            style={{ width: 56, height: 56 }}
-            contentFit="cover"
-            transition={200}
-          />
-        ) : (
-          <Text className="text-2xl font-bold text-white">{player.role}</Text>
-        )}
+      <View className="mr-4">
+        <PlayerAvatar
+          playerName={player.name}
+          playerTeam={player.team}
+          role={player.role}
+          size="medium"
+          photoUrl={player.photoUrl}
+        />
       </View>
 
       {/* Player Info */}

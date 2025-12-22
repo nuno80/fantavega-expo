@@ -3,6 +3,7 @@
 // Include giocatori assegnati + aste in corso dove stai vincendo
 
 import { AuctionTimer } from "@/components/auction/AuctionTimer";
+import { PlayerAvatar } from "@/components/PlayerAvatar";
 import { useCurrentUser } from "@/contexts/AuthContext";
 import { useLeague } from "@/hooks/useLeague";
 import { useLeagueAuctions } from "@/hooks/useLeagueAuctions";
@@ -163,11 +164,14 @@ export default function RosterTab() {
     if (slot.slotType === "assigned" && slot.player) {
       return (
         <View className="mx-4 mb-2 flex-row items-center rounded-xl bg-dark-card p-3">
-          <View
-            className="h-10 w-10 items-center justify-center rounded-full mr-3"
-            style={{ backgroundColor: roleColor }}
-          >
-            <Text className="font-bold text-white">{slot.role}</Text>
+          <View className="mr-3">
+            <PlayerAvatar
+              playerName={slot.player.playerName}
+              playerTeam={slot.player.playerTeam}
+              role={slot.role}
+              size="small"
+              photoUrl={slot.player.playerPhotoUrl}
+            />
           </View>
           <View className="flex-1">
             <Text className="font-semibold text-white">{slot.player.playerName}</Text>
@@ -185,11 +189,14 @@ export default function RosterTab() {
     if (slot.slotType === "auction" && slot.auction) {
       return (
         <View className="mx-4 mb-2 flex-row items-center rounded-xl bg-amber-900/30 border border-amber-700/50 p-3">
-          <View
-            className="h-10 w-10 items-center justify-center rounded-full mr-3"
-            style={{ backgroundColor: roleColor }}
-          >
-            <Text className="font-bold text-white">{slot.role}</Text>
+          <View className="mr-3">
+            <PlayerAvatar
+              playerName={slot.auction.data.playerName}
+              playerTeam={slot.auction.data.playerTeam}
+              role={slot.role}
+              size="small"
+              photoUrl={slot.auction.data.playerPhotoUrl}
+            />
           </View>
           <View className="flex-1">
             <View className="flex-row items-center gap-1">

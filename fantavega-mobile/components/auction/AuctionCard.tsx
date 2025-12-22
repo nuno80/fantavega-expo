@@ -3,9 +3,9 @@
 // Best Practice: expo-image per performance, NativeWind per stili
 
 import { AuctionTimer } from "@/components/auction/AuctionTimer";
+import { PlayerAvatar } from "@/components/PlayerAvatar";
 import { PlayerRole, ROLE_COLORS } from "@/types";
 import { LiveAuction } from "@/types/schemas";
-import { Image } from "expo-image";
 import { Pressable, Text, View } from "react-native";
 
 interface AuctionCardProps {
@@ -32,15 +32,13 @@ export const AuctionCard = ({
     >
       <View className="flex-row">
         {/* Player Photo */}
-        <View className="relative">
-          <Image
-            source={
-              auction.playerPhotoUrl
-                ? { uri: auction.playerPhotoUrl }
-                : require("@/assets/icon.png")
-            }
-            style={{ width: 90, height: 90 }}
-            contentFit="cover"
+        <View className="relative p-2">
+          <PlayerAvatar
+            playerName={auction.playerName}
+            playerTeam={auction.playerTeam}
+            role={auction.playerRole as PlayerRole}
+            size="large"
+            photoUrl={auction.playerPhotoUrl}
           />
           {/* Role Badge */}
           <View

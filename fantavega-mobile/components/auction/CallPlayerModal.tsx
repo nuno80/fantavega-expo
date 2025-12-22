@@ -69,17 +69,57 @@ export function CallPlayerModal({
 
     setIsLoading(true);
     try {
-      // 1. Crea l'asta
-      const auctionId = await createAuction(leagueId, {
-        playerId: player.id,
-        playerName: player.name,
-        playerRole: player.role,
-        playerTeam: player.team,
-        playerPhotoUrl: player.photoUrl ?? null,
-        scheduledEndTime: Date.now() + 1440 * 60 * 1000, // 24h default
-      });
+      console.log("[CALL MODAL] Starting auction for leagueId:", leagueId, "userId:", currentUserId, "playerId:", player.id);
 
-      // 2. Piazza la prima offerta (con auto-bid se attivo)
+      // 1. Controlla se esiste già un'asta attiva per questo giocatore
+      const { getActiveAuctionByPlayerId } = await import("@/services/auction.service");
+      const existingAuction = await getActiveAuctionByPlayerId(leagueId, player.id);
+
+      let auctionId: string;
+
+      if (existingAuction) {
+        // Asta già esistente! Piazza offerta su quella
+        console.log("[CALL MODAL] Found existing auction for player:", existingAuction.auctionId);
+        auctionId = existingAuction.auctionId;
+
+        // Verifica che l'offerta sia maggiore del currentBid
+        if (amount <= existingAuction.auction.currentBid) {
+          throw new Error(`L'offerta deve essere maggiore di ${existingAuction.auction.currentBid} crediti.`);
+        }
+      } else {
+        // Nessuna asta esistente, creane una nuova
+        auctionId = await createAuction(leagueId, {
+          playerId: player.id,
+          playerName: player.name,
+          playerRole: player.role,
+          playerTeam: player.team,
+          playerPhotoUrl: player.photoUrl ?? null,
+          scheduledEndTime: Date.now() + 1440 * 60 * 1000, // 24h default
+        });
+
+        console.log("[CALL MODAL] Auction created with ID:", auctionId);
+
+        // 2. Verifica che l'asta sia stata creata (con retry)
+        let auctionReady = false;
+        for (let i = 0; i < 5; i++) {
+          await new Promise((resolve) => setTimeout(resolve, 300));
+          const { getAuction } = await import("@/services/auction.service");
+          const auction = await getAuction(leagueId, auctionId);
+          console.log("[CALL MODAL] Retry", i, "- auction found:", !!auction);
+          if (auction && auction.status === "active") {
+            auctionReady = true;
+            break;
+          }
+        }
+
+        if (!auctionReady) {
+          throw new Error("Asta creata ma non ancora disponibile. Riprova tra qualche secondo.");
+        }
+      }
+
+      console.log("[CALL MODAL] Placing bid at path: auctions/" + leagueId + "/" + auctionId);
+
+      // 3. Piazza l'offerta (con auto-bid se attivo)
       const bidResult = await placeBid({
         leagueId,
         auctionId,
@@ -94,7 +134,7 @@ export function CallPlayerModal({
         throw new Error(bidResult.message);
       }
 
-      // 3. Chiudi modale e naviga all'asta
+      // 4. Chiudi modale e naviga all'asta
       onClose();
       setBidAmount("");
       setMaxBidAmount("");
@@ -106,7 +146,7 @@ export function CallPlayerModal({
       });
     } catch (error) {
       console.error("Error starting auction:", error);
-      Alert.alert("Errore", "Impossibile avviare l'asta. Riprova.");
+      Alert.alert("Errore", error instanceof Error ? error.message : "Impossibile avviare l'asta. Riprova.");
     } finally {
       setIsLoading(false);
     }

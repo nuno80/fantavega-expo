@@ -61,7 +61,7 @@ export default function RootLayout() {
               <Stack.Screen
                 name="league/[id]"
                 options={{
-                  title: "Lega",
+                  headerShown: false,
                 }}
               />
               <Stack.Screen
@@ -69,12 +69,6 @@ export default function RootLayout() {
                 options={{
                   title: "Crea Lega",
                   presentation: "modal",
-                }}
-              />
-              <Stack.Screen
-                name="league/[id]/settings"
-                options={{
-                  title: "Impostazioni",
                 }}
               />
               <Stack.Screen

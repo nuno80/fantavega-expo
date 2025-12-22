@@ -11,8 +11,8 @@ import {
   push,
   ref,
   remove,
-  runTransaction,
-  set
+  set,
+  update
 } from "firebase/database";
 
 // ============================================
@@ -27,6 +27,7 @@ interface PlaceBidParams {
   amount: number;
   bidType?: "manual" | "quick";
   maxAmount?: number;   // Auto-bid max amount (eBay-style)
+  allowMatch?: boolean; // Permette di pareggiare (non superare) il currentBid
 }
 
 interface PlaceBidResult {
@@ -42,6 +43,83 @@ interface BudgetCheckResult {
   canBid: boolean;
   availableBudget: number;
   reason?: string;
+}
+
+// Tipo per partecipante auto-bid battle
+interface AutoBidParticipant {
+  userId: string;
+  username: string;
+  maxAmount: number;
+  createdAt: number;
+  isActive: boolean;
+}
+
+// Risultato della simulazione battaglia auto-bid
+interface AutoBidBattleResult {
+  finalAmount: number;
+  finalBidderId: string;
+  finalBidderUsername: string;
+  wasBattle: boolean; // true se c'è stata competizione tra auto-bid
+}
+
+/**
+ * Simula una battaglia auto-bid e determina il vincitore.
+ * Logica eBay-style:
+ * 1. Trova l'auto-bid con max più alto
+ * 2. In caso di parità, vince chi ha settato l'auto-bid PRIMA (createdAt più basso)
+ * 3. Il prezzo finale è: secondBest.max + 1 (ma non oltre winner.max)
+ */
+function simulateAutoBidBattle(
+  incomingBid: number,
+  incomingBidderId: string,
+  autoBids: AutoBidParticipant[]
+): AutoBidBattleResult | null {
+  // Filtra auto-bid che possono competere (max > bid corrente)
+  const competingAutoBids = autoBids.filter(
+    (ab) => ab.isActive && ab.maxAmount > incomingBid
+  );
+
+  if (competingAutoBids.length === 0) {
+    // Nessun auto-bid può competere, il bid manuale vince
+    return null;
+  }
+
+  // Ordina: prima per maxAmount (desc), poi per createdAt (asc = primo vince)
+  const sorted = competingAutoBids.sort((a, b) => {
+    if (b.maxAmount !== a.maxAmount) {
+      return b.maxAmount - a.maxAmount;
+    }
+    return a.createdAt - b.createdAt;
+  });
+
+  const winner = sorted[0];
+  const secondBest = sorted.length > 1 ? sorted[1] : null;
+
+  // Calcola prezzo finale (eBay-style)
+  let finalAmount: number;
+
+  if (secondBest) {
+    if (secondBest.maxAmount === winner.maxAmount) {
+      // PARITÀ: vincitore paga il suo massimo
+      finalAmount = winner.maxAmount;
+      console.log(`[AUTO-BID BATTLE] Parità! ${winner.userId} vince pagando max ${finalAmount}`);
+    } else {
+      // Vincitore paga 1 + il secondo migliore
+      finalAmount = Math.min(secondBest.maxAmount + 1, winner.maxAmount);
+      console.log(`[AUTO-BID BATTLE] ${winner.userId} vince pagando ${finalAmount} (1 + secondo: ${secondBest.maxAmount})`);
+    }
+  } else {
+    // Solo un auto-bid: paga 1 + bid corrente
+    finalAmount = Math.min(incomingBid + 1, winner.maxAmount);
+    console.log(`[AUTO-BID BATTLE] Solo ${winner.userId}, paga ${finalAmount} (1 + bid: ${incomingBid})`);
+  }
+
+  return {
+    finalAmount,
+    finalBidderId: winner.userId,
+    finalBidderUsername: winner.username,
+    wasBattle: true,
+  };
 }
 
 // ============================================
@@ -132,7 +210,7 @@ export const checkBudgetClientSide = (
 export const placeBid = async (
   params: PlaceBidParams
 ): Promise<PlaceBidResult> => {
-  const { leagueId, auctionId, userId, username, amount, bidType = "manual", maxAmount } = params;
+  const { leagueId, auctionId, userId, username, amount, bidType = "manual", maxAmount, allowMatch = false } = params;
 
   const auctionRef = ref(realtimeDb, `auctions/${leagueId}/${auctionId}`);
 
@@ -142,64 +220,70 @@ export const placeBid = async (
   let playerName: string = "";
 
   try {
-    // Transazione atomica per evitare race conditions
-    const result = await runTransaction(auctionRef, (currentData) => {
-      if (currentData === null) {
-        // L'asta non esiste
-        return undefined; // Abort transaction
-      }
+    // Prima leggiamo lo stato attuale dell'asta
+    const snapshot = await get(auctionRef);
 
-      const parsed = LiveAuctionSchema.safeParse(currentData);
-      if (!parsed.success) {
-        console.warn("Invalid auction data:", parsed.error);
-        return undefined;
-      }
-
-      const auction = parsed.data;
-
-      // Validazioni
-      if (auction.status !== "active") {
-        return undefined; // Asta non attiva
-      }
-
-      if (amount <= auction.currentBid) {
-        return undefined; // Offerta troppo bassa
-      }
-
-      const now = Date.now();
-      if (now >= auction.scheduledEndTime) {
-        return undefined; // Asta scaduta
-      }
-
-      // Cattura il bidder precedente per notifiche (se diverso dal nuovo bidder)
-      if (auction.currentBidderId && auction.currentBidderId !== userId) {
-        previousBidderId = auction.currentBidderId;
-        previousBidderName = auction.currentBidderName ?? null;
-      }
-      playerName = auction.playerName;
-
-      // Aggiorna l'asta con la nuova offerta
-      const updatedAuction: LiveAuction = {
-        ...auction,
-        currentBid: amount,
-        currentBidderId: userId,
-        currentBidderName: username,
-        // Reset timer se mancano meno di 5 minuti (anti-snipe)
-        scheduledEndTime:
-          auction.scheduledEndTime - now < 5 * 60 * 1000
-            ? now + 5 * 60 * 1000
-            : auction.scheduledEndTime,
-      };
-
-      return updatedAuction;
-    });
-
-    if (!result.committed) {
+    if (!snapshot.exists()) {
       return {
         success: false,
-        message: "Offerta non valida. L'asta potrebbe essere chiusa o l'offerta troppo bassa.",
+        message: "Asta non trovata nel database.",
       };
     }
+
+    const parsed = LiveAuctionSchema.safeParse(snapshot.val());
+    if (!parsed.success) {
+      console.warn("[BID] Invalid auction data:", parsed.error);
+      return {
+        success: false,
+        message: "Dati asta non validi.",
+      };
+    }
+
+    const auction = parsed.data;
+    playerName = auction.playerName;
+
+    // Validazioni
+    if (auction.status !== "active") {
+      return { success: false, message: "L'asta non è più attiva." };
+    }
+
+    // Validazione importo: normalmente > currentBid, ma allowMatch permette = currentBid
+    if (allowMatch) {
+      if (amount < auction.currentBid) {
+        return { success: false, message: `L'offerta deve essere almeno ${auction.currentBid} crediti.` };
+      }
+    } else {
+      if (amount <= auction.currentBid) {
+        return { success: false, message: `L'offerta deve essere maggiore di ${auction.currentBid} crediti.` };
+      }
+    }
+
+    const now = Date.now();
+    if (now >= auction.scheduledEndTime) {
+      return { success: false, message: "L'asta è scaduta." };
+    }
+
+    // Cattura il bidder precedente per notifiche (se diverso dal nuovo bidder)
+    if (auction.currentBidderId && auction.currentBidderId !== userId) {
+      previousBidderId = auction.currentBidderId;
+      previousBidderName = auction.currentBidderName ?? null;
+    }
+
+    // Prepara l'update
+    const newScheduledEndTime =
+      auction.scheduledEndTime - now < 5 * 60 * 1000
+        ? now + 5 * 60 * 1000 // Reset timer anti-snipe
+        : auction.scheduledEndTime;
+
+    // Usa update() invece di runTransaction() per evitare problemi con dati appena creati
+    await update(auctionRef, {
+      currentBid: amount,
+      currentBidderId: userId,
+      currentBidderName: username,
+      scheduledEndTime: newScheduledEndTime,
+    });
+
+    console.log("[BID] Updated auction:", { currentBid: amount, currentBidderId: userId });
 
     // Aggiungi il bid allo storico
     const bidsRef = ref(realtimeDb, `auctions/${leagueId}/${auctionId}/bids`);
@@ -220,6 +304,7 @@ export const placeBid = async (
     // Se c'è un auto-bid, salvalo e aggiorna locked credits
     if (maxAmount && maxAmount > amount) {
       const autoBidRef = ref(realtimeDb, `autoBids/${leagueId}/${auctionId}/${userId}`);
+      console.log(`[AUTO-BID SAVE] Saving auto-bid for ${userId}: max=${maxAmount}`);
       await set(autoBidRef, {
         userId,
         username,
@@ -234,20 +319,110 @@ export const placeBid = async (
     }
 
     // ============================================
-    // PUSH NOTIFICATION: Bidder superato
+    // AUTO-BID BATTLE: Simula la battaglia tra tutti gli auto-bid attivi
+    // Usa approccio webapp: calcola vincitore matematicamente, nessuna ricorsione
     // ============================================
-    if (previousBidderId) {
-      // Invia in background, non blocca il ritorno
-      sendPushToUser(previousBidderId, {
-        title: "⚠️ Offerta superata!",
-        body: `La tua offerta per ${playerName} è stata superata. Nuova offerta: ${amount} crediti`,
-        data: { type: "bid_surpassed", auctionId, leagueId },
-      }).catch((err) => console.warn("Push notification failed:", err));
+    if (!allowMatch) {
+      // Recupera TUTTI gli auto-bid attivi per questa asta
+      const allAutoBidsRef = ref(realtimeDb, `autoBids/${leagueId}/${auctionId}`);
+      const allAutoBidsSnapshot = await get(allAutoBidsRef);
 
-      // Sblocca i crediti del bidder superato (rimuovi il suo auto-bid)
-      const prevAutoBidRef = ref(realtimeDb, `autoBids/${leagueId}/${auctionId}/${previousBidderId}`);
-      await remove(prevAutoBidRef);
-      await recalculateUserLockedCredits(leagueId, previousBidderId);
+      const autoBidParticipants: AutoBidParticipant[] = [];
+
+      if (allAutoBidsSnapshot.exists()) {
+        const autoBidsData = allAutoBidsSnapshot.val();
+        for (const [odUserId, abData] of Object.entries(autoBidsData)) {
+          const ab = abData as {
+            userId: string;
+            username: string;
+            maxAmount: number;
+            createdAt: number;
+            isActive: boolean;
+          };
+          if (ab.isActive) {
+            autoBidParticipants.push({
+              userId: ab.userId || odUserId,
+              username: ab.username,
+              maxAmount: ab.maxAmount,
+              createdAt: ab.createdAt,
+              isActive: ab.isActive,
+            });
+          }
+        }
+      }
+
+      console.log(`[AUTO-BID] Found ${autoBidParticipants.length} active auto-bids`);
+
+      if (autoBidParticipants.length > 0) {
+        // Simula la battaglia
+        const battleResult = simulateAutoBidBattle(amount, userId, autoBidParticipants);
+
+        if (battleResult && battleResult.finalBidderId !== userId) {
+          // Un auto-bid ha vinto! Aggiorna l'asta con il vincitore finale
+          console.log(`[AUTO-BID BATTLE] Winner: ${battleResult.finalBidderId} at ${battleResult.finalAmount}`);
+
+          await update(auctionRef, {
+            currentBid: battleResult.finalAmount,
+            currentBidderId: battleResult.finalBidderId,
+            currentBidderName: battleResult.finalBidderUsername,
+          });
+
+          // Aggiungi il bid finale dello storico
+          const winnerBidRecord: Bid = {
+            userId: battleResult.finalBidderId,
+            username: battleResult.finalBidderUsername,
+            amount: battleResult.finalAmount,
+            bidTime: Date.now(),
+            bidType: "manual", // Auto-bid genera bid "manual" nello storico
+          };
+          await push(bidsRef, BidSchema.parse(winnerBidRecord));
+
+          // Rimuovi gli auto-bid esauriti (tutti quelli <= finalAmount)
+          for (const ab of autoBidParticipants) {
+            if (ab.maxAmount <= battleResult.finalAmount) {
+              const abRef = ref(realtimeDb, `autoBids/${leagueId}/${auctionId}/${ab.userId}`);
+              await remove(abRef);
+              await recalculateUserLockedCredits(leagueId, ab.userId);
+              console.log(`[AUTO-BID] Removed exhausted auto-bid for ${ab.userId}`);
+            }
+          }
+
+          // Notifica il bidder originale che è stato superato
+          if (previousBidderId && previousBidderId !== battleResult.finalBidderId) {
+            sendPushToUser(previousBidderId, {
+              title: "⚠️ Offerta superata!",
+              body: `La tua offerta per ${playerName} è stata superata da un auto-bid. Offerta finale: ${battleResult.finalAmount} crediti`,
+              data: { type: "bid_surpassed", auctionId, leagueId },
+            }).catch((err) => console.warn("Push notification failed:", err));
+          }
+        } else {
+          // Il bid manuale ha vinto (nessun auto-bid può competere)
+          // Rimuovi auto-bid esauriti del bidder precedente
+          if (previousBidderId) {
+            const prevAbRef = ref(realtimeDb, `autoBids/${leagueId}/${auctionId}/${previousBidderId}`);
+            const prevAbSnapshot = await get(prevAbRef);
+            if (prevAbSnapshot.exists()) {
+              const prevAb = prevAbSnapshot.val() as { maxAmount: number };
+              if (prevAb.maxAmount <= amount) {
+                await remove(prevAbRef);
+                await recalculateUserLockedCredits(leagueId, previousBidderId);
+                sendPushToUser(previousBidderId, {
+                  title: "⚠️ Auto-bid esaurito!",
+                  body: `Il tuo auto-bid per ${playerName} è stato superato. Offerta attuale: ${amount} crediti`,
+                  data: { type: "autobid_exhausted", auctionId, leagueId },
+                }).catch((err) => console.warn("Push notification failed:", err));
+              }
+            }
+          }
+        }
+      } else if (previousBidderId) {
+        // Nessun auto-bid attivo, solo notifica normale
+        sendPushToUser(previousBidderId, {
+          title: "⚠️ Offerta superata!",
+          body: `La tua offerta per ${playerName} è stata superata. Nuova offerta: ${amount} crediti`,
+          data: { type: "bid_surpassed", auctionId, leagueId },
+        }).catch((err) => console.warn("Push notification failed:", err));
+      }
     }
 
     return {
@@ -256,7 +431,7 @@ export const placeBid = async (
         ? `Offerta ${amount} + Auto-bid max ${maxAmount} piazzati!`
         : `Offerta di ${amount} crediti piazzata con successo!`,
       newBidId: newBidRef.key ?? undefined,
-      auction: result.snapshot.val() as LiveAuction,
+      auction: { ...auction, currentBid: amount, currentBidderId: userId, currentBidderName: username },
       previousBidderId,
     };
   } catch (error) {

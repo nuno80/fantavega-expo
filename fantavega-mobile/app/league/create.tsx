@@ -2,7 +2,7 @@
 // Screen per creare una nuova lega
 
 import { useCurrentUser } from "@/contexts/AuthContext";
-import { createLeague } from "@/services/league.service";
+import { addParticipant, createLeague } from "@/services/league.service";
 import { CreateLeagueFormSchema, type CreateLeagueForm } from "@/types/schemas";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useQueryClient } from "@tanstack/react-query";
@@ -14,16 +14,19 @@ import {
   Alert,
   Pressable,
   ScrollView,
+  Switch,
   Text,
   TextInput,
-  View,
+  View
 } from "react-native";
 
 export default function CreateLeagueScreen() {
   const router = useRouter();
   const queryClient = useQueryClient();
-  const { currentUserId } = useCurrentUser();
+  const { currentUserId, currentUser } = useCurrentUser();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [joinAsParticipant, setJoinAsParticipant] = useState(true);
+  const [teamName, setTeamName] = useState(currentUser?.username ?? "");
 
   const {
     control,
@@ -57,6 +60,16 @@ export default function CreateLeagueScreen() {
         adminCreatorId: currentUserId,
         inviteCode,
       });
+
+      // Se l'admin vuole partecipare, aggiungilo come partecipante
+      if (joinAsParticipant && teamName.trim()) {
+        await addParticipant(
+          leagueId,
+          currentUserId,
+          teamName.trim(),
+          data.initialBudgetPerManager
+        );
+      }
 
       // Invalida la cache delle leghe per aggiornare la Home
       await queryClient.invalidateQueries({ queryKey: ["leagues"] });
@@ -206,6 +219,35 @@ export default function CreateLeagueScreen() {
               })}
             </View>
           </View>
+        </View>
+
+        {/* Partecipa alla lega */}
+        <View className="mb-6 bg-dark-card rounded-xl p-4">
+          <View className="flex-row items-center justify-between mb-3">
+            <View className="flex-1">
+              <Text className="text-white font-semibold">Partecipa alla lega</Text>
+              <Text className="text-gray-400 text-sm">Unisciti come manager</Text>
+            </View>
+            <Switch
+              value={joinAsParticipant}
+              onValueChange={setJoinAsParticipant}
+              trackColor={{ false: "#374151", true: "#4f46e5" }}
+              thumbColor={joinAsParticipant ? "#a5b4fc" : "#9ca3af"}
+            />
+          </View>
+
+          {joinAsParticipant && (
+            <View>
+              <Text className="text-gray-300 text-sm mb-2">Nome Team</Text>
+              <TextInput
+                className="bg-dark-bg text-white p-3 rounded-xl"
+                placeholder="Es. FC Mario"
+                placeholderTextColor="#6b7280"
+                value={teamName}
+                onChangeText={setTeamName}
+              />
+            </View>
+          )}
         </View>
 
         {/* Submit */}

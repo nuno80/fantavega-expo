@@ -4,16 +4,16 @@
 
 import { AuctionTimer } from "@/components/auction/AuctionTimer";
 import { BidBottomSheet } from "@/components/auction/BidBottomSheet";
+import { PlayerAvatar } from "@/components/PlayerAvatar";
 import { useCurrentUser } from "@/contexts/AuthContext";
 import { useAuction } from "@/hooks/useAuction";
 import { useUserAutoBid } from "@/hooks/useAutoBid";
 import { placeBid } from "@/services/bid.service";
 import { PlayerRole, ROLE_COLORS } from "@/types";
-import { Image } from "expo-image";
-import { useKeepAwake } from "expo-keep-awake";
+import { activateKeepAwakeAsync, deactivateKeepAwake } from "expo-keep-awake";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { Bot, Info } from "lucide-react-native";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -44,7 +44,19 @@ export default function AuctionDetailScreen() {
   const [isBidding, setIsBidding] = useState(false);
 
   // Mantieni lo schermo acceso durante la visualizzazione dell'asta
-  useKeepAwake();
+  // Wrapped in try-catch per evitare crash in Expo Go
+  useEffect(() => {
+    let active = true;
+    activateKeepAwakeAsync().catch(() => {
+      // Silently ignore - non-critical feature
+    });
+    return () => {
+      if (active) {
+        deactivateKeepAwake();
+        active = false;
+      }
+    };
+  }, []);
 
   const handlePlaceBid = async (amount: number, maxAmount?: number) => {
     if (!leagueId || !auctionId || !auction) return;
@@ -122,14 +134,12 @@ export default function AuctionDetailScreen() {
         {/* Player Card */}
         <View className="items-center p-6">
           <View className="relative">
-            <Image
-              source={
-                auction.playerPhotoUrl
-                  ? { uri: auction.playerPhotoUrl }
-                  : require("@/assets/icon.png")
-              }
-              style={{ width: 140, height: 140, borderRadius: 70 }}
-              contentFit="cover"
+            <PlayerAvatar
+              playerName={auction.playerName}
+              playerTeam={auction.playerTeam}
+              role={auction.playerRole as PlayerRole}
+              size="xlarge"
+              photoUrl={auction.playerPhotoUrl}
             />
             <View
               className="absolute -bottom-2 left-1/2 -translate-x-1/2 rounded-full px-4 py-1"

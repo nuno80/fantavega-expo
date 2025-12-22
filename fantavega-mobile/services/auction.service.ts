@@ -72,6 +72,30 @@ export const getAuction = async (
   return parsed.success ? parsed.data : null;
 };
 
+/**
+ * Cerca un'asta attiva per un dato giocatore in una lega
+ * Restituisce l'ID dell'asta se esiste, null altrimenti
+ */
+export const getActiveAuctionByPlayerId = async (
+  leagueId: string,
+  playerId: number
+): Promise<{ auctionId: string; auction: LiveAuction } | null> => {
+  const leagueRef = getLeagueAuctionsRef(leagueId);
+  const snapshot = await get(leagueRef);
+
+  if (!snapshot.exists()) return null;
+
+  const data = snapshot.val();
+  for (const [auctionId, auctionData] of Object.entries(data)) {
+    const parsed = LiveAuctionSchema.safeParse(auctionData);
+    if (parsed.success && parsed.data.status === "active" && parsed.data.playerId === playerId) {
+      return { auctionId, auction: parsed.data };
+    }
+  }
+
+  return null;
+};
+
 // ============================================
 // REAL-TIME SUBSCRIPTIONS
 // ============================================
