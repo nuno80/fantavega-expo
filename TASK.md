@@ -35,6 +35,8 @@
 - [x] **8.6** Componente `ComplianceTimer` UI ✅
   - Timer countdown nella pagina rosa
   - Mostra tempo rimanente prima della penalità
+  - Fix: schema Zod con `.nullish()` per Firebase
+  - Fix: default `activeAuctionRoles` a "ALL" in fasi attive
 
 
 ---
