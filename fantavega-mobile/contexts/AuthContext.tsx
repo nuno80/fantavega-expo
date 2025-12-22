@@ -44,35 +44,53 @@ import { Platform } from "react-native";
  */
 const DEV_MODE_ENABLED = __DEV__ && true; // ← Cambia a false per testare auth reale
 
-// Mock users per DEV_MODE (stessi di userStore.ts per compatibilità)
+/**
+ * UTENTI DEV REALI - Creali in Firebase Console:
+ * 1. Vai su https://console.firebase.google.com/project/fantavega/authentication/users
+ * 2. Clicca "Add user"
+ * 3. Email: dev1@fantavega.test, Password: test123456
+ * 4. Copia l'UID generato e incollalo qui sotto
+ *
+ * Credenziali dev:
+ * - Email: dev1@fantavega.test → dev5@fantavega.test
+ * - Password: test123456
+ */
 export const DEV_MOCK_USERS = [
   {
-    uid: "user_mock_1",
-    displayName: "Mario Rossi",
-    email: "mario@test.com",
+    // TODO: Sostituisci con UID reale da Firebase Console
+    uid: "REPLACE_WITH_DEV1_UID",
+    displayName: "Dev Manager 1",
+    email: "dev1@fantavega.test",
     photoURL: null,
   },
   {
-    uid: "user_mock_2",
-    displayName: "Luigi Verdi",
-    email: "luigi@test.com",
+    uid: "REPLACE_WITH_DEV2_UID",
+    displayName: "Dev Manager 2",
+    email: "dev2@fantavega.test",
     photoURL: null,
   },
   {
-    uid: "user_mock_3",
-    displayName: "Anna Bianchi",
-    email: "anna@test.com",
+    uid: "REPLACE_WITH_DEV3_UID",
+    displayName: "Dev Manager 3",
+    email: "dev3@fantavega.test",
     photoURL: null,
   },
   {
-    uid: "user_mock_admin",
-    displayName: "Admin Test",
-    email: "admin@test.com",
+    uid: "REPLACE_WITH_DEV4_UID",
+    displayName: "Dev Manager 4",
+    email: "dev4@fantavega.test",
+    photoURL: null,
+  },
+  {
+    uid: "REPLACE_WITH_DEV5_UID",
+    displayName: "Dev Admin",
+    email: "dev5@fantavega.test",
     photoURL: null,
   },
 ] as const;
 
 export type DevMockUser = (typeof DEV_MOCK_USERS)[number];
+
 
 // ============================================
 // TYPES

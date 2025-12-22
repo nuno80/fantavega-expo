@@ -141,6 +141,7 @@ export const subscribeToUserRoster = (
 
 /**
  * Aggiunge un giocatore alla rosa (chiamato quando un'asta termina)
+ * NOTA: Firebase RTDB non accetta undefined, quindi convertiamo a null
  */
 export const addPlayerToRoster = async (
   leagueId: string,
@@ -148,7 +149,15 @@ export const addPlayerToRoster = async (
   player: RosterPlayer
 ): Promise<void> => {
   const playerRef = getRosterPlayerRef(leagueId, userId, player.playerId);
-  await set(playerRef, player);
+
+  // Firebase RTDB non accetta undefined, converti a null
+  const sanitizedPlayer = {
+    ...player,
+    playerPhotoUrl: player.playerPhotoUrl ?? null,
+    auctionId: player.auctionId ?? null,
+  };
+
+  await set(playerRef, sanitizedPlayer);
 };
 
 /**

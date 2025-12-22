@@ -108,17 +108,25 @@ export async function getLeagueParticipants(leagueId: string): Promise<LeaguePar
   const snapshot = await getDocs(participantsRef);
   const participants: LeagueParticipant[] = [];
 
+  console.log(`[DEBUG] Found ${snapshot.docs.length} participant docs in league ${leagueId}`);
+
   snapshot.docs.forEach((doc) => {
     const data = doc.data();
+    console.log("[DEBUG] Raw participant data:", JSON.stringify(data, null, 2));
+
     const parsed = LeagueParticipantSchema.safeParse({
       ...data,
       joinedAt: data.joinedAt?.toDate?.() || new Date(),
     });
+
     if (parsed.success) {
       participants.push(parsed.data);
+    } else {
+      console.warn("[DEBUG] Zod parse FAILED for participant:", parsed.error.issues);
     }
   });
 
+  console.log(`[DEBUG] Parsed ${participants.length} valid participants`);
   return participants;
 }
 

@@ -3,8 +3,9 @@
 // Best Practice: Cleanup automatico, Map per lookup efficiente
 
 import { subscribeToLeagueAuctions } from "@/services/auction.service";
+import { closeAuctionAndAssign } from "@/services/bid.service";
 import { LiveAuction } from "@/types/schemas";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 interface UseLeagueAuctionsReturn {
   auctions: Map<string, LiveAuction>;
@@ -17,6 +18,7 @@ interface UseLeagueAuctionsReturn {
 /**
  * Hook per sottoscriversi a tutte le aste di una lega
  * Filtra solo aste attive e fornisce utility per il rendering
+ * IMPORTANTE: Chiude automaticamente le aste scadute
  */
 export const useLeagueAuctions = (
   leagueId: string | null
@@ -24,6 +26,9 @@ export const useLeagueAuctions = (
   const [auctions, setAuctions] = useState<Map<string, LiveAuction>>(new Map());
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
+
+  // Track aste già in chiusura per evitare chiamate duplicate
+  const closingAuctionsRef = useRef<Set<string>>(new Set());
 
   useEffect(() => {
     if (!leagueId) {
@@ -51,6 +56,40 @@ export const useLeagueAuctions = (
       unsubscribe();
     };
   }, [leagueId]);
+
+  // ============================================
+  // AUTO-CLOSE: Chiudi aste scadute automaticamente
+  // ============================================
+  useEffect(() => {
+    if (!leagueId || auctions.size === 0) return;
+
+    const now = Date.now();
+
+    for (const [auctionId, auction] of auctions) {
+      // Controlla se asta è scaduta e non ancora in chiusura
+      if (
+        auction.status === "active" &&
+        auction.scheduledEndTime <= now &&
+        !closingAuctionsRef.current.has(auctionId)
+      ) {
+        // Marca come "in chiusura" per evitare chiamate duplicate
+        closingAuctionsRef.current.add(auctionId);
+
+        console.log(`[AUCTION-AUTO-CLOSE] Closing auction ${auctionId}...`);
+
+        closeAuctionAndAssign(leagueId, auctionId)
+          .then((result) => {
+            console.log(`[AUCTION-AUTO-CLOSE] ${result.message}`);
+            // Rimuovi dalla lista dopo completamento (successo o fallimento)
+            closingAuctionsRef.current.delete(auctionId);
+          })
+          .catch((err) => {
+            console.error(`[AUCTION-AUTO-CLOSE] Error closing ${auctionId}:`, err);
+            closingAuctionsRef.current.delete(auctionId);
+          });
+      }
+    }
+  }, [leagueId, auctions]);
 
   // Converti Map in array per rendering, filtra solo attive
   const auctionsList = Array.from(auctions.entries())

@@ -1,5 +1,5 @@
 // components/auction/CallPlayerModal.tsx
-// Modal per avviare un'asta su un giocatore
+// Modal per avviare un'asta su un giocatore (con opzione Auto-Bid)
 
 import { useCurrentUser } from "@/contexts/AuthContext";
 import { createAuction } from "@/services/auction.service";
@@ -7,12 +7,14 @@ import { placeBid } from "@/services/bid.service";
 import { ROLE_COLORS } from "@/types";
 import type { Player } from "@/types/schemas";
 import { useRouter } from "expo-router";
+import { Bot } from "lucide-react-native";
 import { useState } from "react";
 import {
   ActivityIndicator,
   Alert,
   Modal,
   Pressable,
+  Switch,
   Text,
   TextInput,
   View,
@@ -37,6 +39,10 @@ export function CallPlayerModal({
   const [bidAmount, setBidAmount] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
+  // Auto-bid state
+  const [useAutoBid, setUseAutoBid] = useState(false);
+  const [maxBidAmount, setMaxBidAmount] = useState("");
+
   // Get current user's team name
   const teamName = currentUser?.username ?? "Team";
 
@@ -52,11 +58,20 @@ export function CallPlayerModal({
       return;
     }
 
+    // Validazione auto-bid
+    const maxAmount = useAutoBid ? parseInt(maxBidAmount, 10) : undefined;
+    if (useAutoBid && maxAmount) {
+      if (isNaN(maxAmount) || maxAmount < amount) {
+        Alert.alert("Errore", "Il massimo auto-bid deve essere >= alla tua offerta.");
+        return;
+      }
+    }
+
     setIsLoading(true);
     try {
       // 1. Crea l'asta
       const auctionId = await createAuction(leagueId, {
-        playerId: player.id, // already a number
+        playerId: player.id,
         playerName: player.name,
         playerRole: player.role,
         playerTeam: player.team,
@@ -64,7 +79,7 @@ export function CallPlayerModal({
         scheduledEndTime: Date.now() + 1440 * 60 * 1000, // 24h default
       });
 
-      // 2. Piazza la prima offerta
+      // 2. Piazza la prima offerta (con auto-bid se attivo)
       const bidResult = await placeBid({
         leagueId,
         auctionId,
@@ -72,6 +87,7 @@ export function CallPlayerModal({
         username: teamName,
         amount,
         bidType: "manual",
+        maxAmount, // undefined se auto-bid non attivo
       });
 
       if (!bidResult.success) {
@@ -81,6 +97,8 @@ export function CallPlayerModal({
       // 3. Chiudi modale e naviga all'asta
       onClose();
       setBidAmount("");
+      setMaxBidAmount("");
+      setUseAutoBid(false);
 
       router.push({
         pathname: "/auction/[id]",
@@ -138,7 +156,7 @@ export function CallPlayerModal({
           </View>
 
           {/* Bid Input */}
-          <View className="mb-6">
+          <View className="mb-4">
             <Text className="mb-2 text-sm font-semibold text-white">
               💰 La tua offerta iniziale
             </Text>
@@ -156,7 +174,7 @@ export function CallPlayerModal({
           </View>
 
           {/* Quick Amounts */}
-          <View className="mb-6 flex-row justify-around">
+          <View className="mb-4 flex-row justify-around">
             {[1, player.currentQuotation, player.currentQuotation + 5].map((amount, index) => (
               <Pressable
                 key={`quick-${index}-${amount}`}
@@ -166,6 +184,43 @@ export function CallPlayerModal({
                 <Text className="font-semibold text-white">{amount}</Text>
               </Pressable>
             ))}
+          </View>
+
+          {/* Auto-Bid Section */}
+          <View className="mb-4 rounded-xl bg-indigo-900/30 p-4">
+            <View className="flex-row items-center justify-between mb-2">
+              <View className="flex-row items-center">
+                <Bot size={20} color="#818cf8" />
+                <Text className="ml-2 font-semibold text-indigo-300">
+                  🤖 Auto-Bid
+                </Text>
+              </View>
+              <Switch
+                value={useAutoBid}
+                onValueChange={setUseAutoBid}
+                trackColor={{ false: "#374151", true: "#4f46e5" }}
+                thumbColor={useAutoBid ? "#a5b4fc" : "#9ca3af"}
+              />
+            </View>
+
+            {useAutoBid && (
+              <>
+                <Text className="mb-2 text-xs text-gray-400">
+                  Il sistema rilancerà automaticamente fino al tuo massimo
+                </Text>
+                <TextInput
+                  className="rounded-xl bg-[#11111a] p-3 text-white border border-indigo-600"
+                  placeholder="Massimo auto-bid..."
+                  placeholderTextColor="#6b7280"
+                  keyboardType="number-pad"
+                  value={maxBidAmount}
+                  onChangeText={setMaxBidAmount}
+                />
+                <Text className="mt-1 text-xs text-gray-500">
+                  Pagherai solo 1 in più del secondo miglior offerente
+                </Text>
+              </>
+            )}
           </View>
 
           {/* Start Auction Button */}
