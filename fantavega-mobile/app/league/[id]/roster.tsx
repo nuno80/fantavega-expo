@@ -3,9 +3,10 @@
 // Include giocatori assegnati + aste in corso dove stai vincendo
 
 import { AuctionTimer } from "@/components/auction/AuctionTimer";
+import { ComplianceTimer } from "@/components/auction/ComplianceTimer";
 import { PlayerAvatar } from "@/components/PlayerAvatar";
 import { useCurrentUser } from "@/contexts/AuthContext";
-import { useComplianceCheck } from "@/hooks/useCompliance";
+import { useComplianceCheck, useComplianceStatus } from "@/hooks/useCompliance";
 import { useLeague } from "@/hooks/useLeague";
 import { useLeagueAuctions } from "@/hooks/useLeagueAuctions";
 import { useUserRoster } from "@/hooks/useUserRoster";
@@ -52,7 +53,14 @@ export default function RosterTab() {
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   // 🔴 TRIGGER COMPLIANCE CHECK all'accesso della pagina rosa
-  useComplianceCheck(leagueId ?? null, currentUserId, league?.status);
+  const { result: complianceResult } = useComplianceCheck(
+    leagueId ?? null,
+    currentUserId,
+    league?.status
+  );
+
+  // Stato compliance per il timer (real-time da Firebase)
+  const { data: complianceStatus } = useComplianceStatus(leagueId ?? "", currentUserId);
 
   const isLoading = isLeagueLoading || isRosterLoading;
 
@@ -238,10 +246,28 @@ export default function RosterTab() {
   const assignedCount = roster?.players.length ?? 0;
   const auctionCount = myWinningAuctions.length;
 
+  // Determina se mostrare il timer compliance
+  const showComplianceTimer =
+    complianceStatus?.complianceTimerStartAt !== null &&
+    complianceStatus?.complianceTimerStartAt !== undefined &&
+    (league?.status === "draft_active" || league?.status === "repair_active");
+
   return (
     <View className="flex-1 bg-dark-bg">
+      {/* Compliance Timer - mostra solo se non compliant */}
+      {showComplianceTimer && (
+        <View className="mx-4 mt-4">
+          <ComplianceTimer
+            timerStartTimestamp={complianceStatus!.complianceTimerStartAt}
+            leagueId={leagueId ?? ""}
+            userId={currentUserId}
+            onPenaltyApplied={handleRefresh}
+          />
+        </View>
+      )}
+
       {/* Riepilogo Budget */}
-      <View className="mx-4 mt-4 mb-2 flex-row justify-between rounded-xl bg-dark-card p-4">
+      <View className={`mx-4 ${showComplianceTimer ? 'mt-2' : 'mt-4'} mb-2 flex-row justify-between rounded-xl bg-dark-card p-4`}>
         <View className="items-center flex-1">
           <Text className="text-2xl font-bold text-primary-400">
             {assignedCount}

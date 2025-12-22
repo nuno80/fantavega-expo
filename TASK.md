@@ -32,6 +32,9 @@
 - [x] **8.5** Trigger compliance nelle pagine ✅
   - `useComplianceCheck` hook in `hooks/useCompliance.ts`
   - Trigger automatico su: `auction/[id].tsx`, `roster.tsx`, `managers.tsx`
+- [x] **8.6** Componente `ComplianceTimer` UI ✅
+  - Timer countdown nella pagina rosa
+  - Mostra tempo rimanente prima della penalità
 
 
 ---
