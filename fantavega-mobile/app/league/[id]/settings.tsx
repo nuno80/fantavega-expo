@@ -384,6 +384,36 @@ export default function LeagueSettingsScreen() {
             </View>
           </View>
 
+          {/* Data Transfer Section */}
+          <View className="bg-dark-card rounded-xl p-4 mb-6">
+            <Text className="text-white font-semibold mb-2">📦 Trasferimento Dati</Text>
+            <Text className="text-gray-400 text-sm mb-4">
+              Esporta o importa le rose in formato CSV
+            </Text>
+            <View className="gap-3">
+              <Pressable
+                onPress={() => router.push({
+                  pathname: "/league/[id]/export",
+                  params: { id: leagueId }
+                })}
+                className="bg-blue-600 p-4 rounded-xl flex-row items-center justify-center active:opacity-80"
+              >
+                <Text className="text-2xl mr-2">📤</Text>
+                <Text className="text-white font-bold">Esporta Rose</Text>
+              </Pressable>
+              <Pressable
+                onPress={() => router.push({
+                  pathname: "/league/[id]/import",
+                  params: { id: leagueId }
+                })}
+                className="bg-green-600 p-4 rounded-xl flex-row items-center justify-center active:opacity-80"
+              >
+                <Text className="text-2xl mr-2">📥</Text>
+                <Text className="text-white font-bold">Importa Rose</Text>
+              </Pressable>
+            </View>
+          </View>
+
           {/* Participants Management */}
           <View className="bg-dark-card rounded-xl p-4 mb-8">
             <Text className="text-white font-semibold mb-4">
