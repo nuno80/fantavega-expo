@@ -188,7 +188,9 @@ export async function addParticipant(
     userId,
     managerTeamName: teamName,
     currentBudget: initialBudget,
+    originalBudget: initialBudget, // Salva budget originale per calcolo spentCredits
     lockedCredits: 0,
+    spentCredits: 0, // Inizializza a 0
     playersP: 0,
     playersD: 0,
     playersC: 0,

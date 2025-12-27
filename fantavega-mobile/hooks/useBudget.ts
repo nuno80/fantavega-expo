@@ -27,9 +27,9 @@ const DEFAULT_BUDGET: BudgetData = {
 /**
  * Hook per budget utente in tempo reale
  * @param leagueId - ID della lega
- * @param initialBudget - Budget iniziale della lega (default 500)
+ * @param fallbackInitialBudget - Budget fallback se originalBudget non esiste (per retrocompatibilità)
  */
-export function useUserBudget(leagueId: string | null, initialBudget: number = 500): BudgetData {
+export function useUserBudget(leagueId: string | null, fallbackInitialBudget: number = 500): BudgetData {
   const { currentUserId } = useCurrentUser();
   const [budget, setBudget] = useState<BudgetData>(DEFAULT_BUDGET);
 
@@ -55,13 +55,17 @@ export function useUserBudget(leagueId: string | null, initialBudget: number = 5
       }
 
       const data = snapshot.data();
-      const currentBudget = data.currentBudget ?? initialBudget;
+      const currentBudget = data.currentBudget ?? fallbackInitialBudget;
       const lockedCredits = data.lockedCredits ?? 0;
 
-      // spentCredits calcolato come differenza tra budget iniziale e corrente
+      // Usa originalBudget dal documento, con fallback per utenti esistenti
+      // originalBudget = budget con cui l'utente si è iscritto
+      const originalBudget = data.originalBudget ?? fallbackInitialBudget;
+
+      // spentCredits calcolato come differenza tra budget ORIGINALE e corrente
       // Questo include TUTTO: acquisti giocatori + penalità
-      // Math.max(0, ...) per evitare negativi se admin ha modificato initialBudget dopo iscrizione
-      const spentCredits = Math.max(0, initialBudget - currentBudget);
+      // Math.max(0, ...) per evitare negativi in casi edge
+      const spentCredits = Math.max(0, originalBudget - currentBudget);
 
       // Calcoli derivati
       const availableBudget = currentBudget - lockedCredits;
@@ -79,7 +83,7 @@ export function useUserBudget(leagueId: string | null, initialBudget: number = 5
     });
 
     return () => unsubscribe();
-  }, [leagueId, currentUserId, initialBudget]);
+  }, [leagueId, currentUserId, fallbackInitialBudget]);
 
   return budget;
 }

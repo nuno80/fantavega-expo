@@ -13,6 +13,7 @@ import { Controller, useForm } from "react-hook-form";
 import {
   ActivityIndicator,
   Alert,
+  Modal,
   Pressable,
   ScrollView,
   Text,
@@ -32,6 +33,24 @@ const STATUS_LABELS: Record<string, string> = {
   completed: "Completata",
 };
 
+// Status icons
+const STATUS_ICONS: Record<string, string> = {
+  participants_joining: "📥",
+  draft_active: "🚀",
+  repair_active: "🔧",
+  market_closed: "🔒",
+  completed: "✅",
+};
+
+// Available statuses for dropdown
+const AVAILABLE_STATUSES = [
+  { value: "participants_joining", label: "Iscrizioni aperte", icon: "📥", description: "I manager possono unirsi" },
+  { value: "draft_active", label: "Asta in corso", icon: "🚀", description: "Asta principale attiva" },
+  { value: "repair_active", label: "Riparazioni", icon: "🔧", description: "Fase di riparazione" },
+  { value: "market_closed", label: "Mercato chiuso", icon: "🔒", description: "Nessuna operazione" },
+  { value: "completed", label: "Completata", icon: "✅", description: "Lega archiviata" },
+];
+
 export default function LeagueSettingsScreen() {
   const { id: leagueId } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
@@ -41,6 +60,7 @@ export default function LeagueSettingsScreen() {
   const { data: participants, refetch: refetchParticipants } = useLeagueParticipants(leagueId ?? "");
 
   const [isSaving, setIsSaving] = useState(false);
+  const [isStatusPickerOpen, setIsStatusPickerOpen] = useState(false);
 
   // Se la lega non ha un codice invito, ne generiamo uno e lo salviamo
   const [inviteCode, setInviteCode] = useState<string | null>(null);
@@ -140,6 +160,32 @@ export default function LeagueSettingsScreen() {
     } finally {
       setIsSaving(false);
     }
+  };
+
+  const handleStatusChange = async (newStatus: string) => {
+    const statusInfo = AVAILABLE_STATUSES.find(s => s.value === newStatus);
+
+    Alert.alert(
+      `Cambia a "${statusInfo?.label}"?`,
+      statusInfo?.description ?? "Sei sicuro di voler cambiare lo stato?",
+      [
+        { text: "Annulla", style: "cancel" },
+        {
+          text: "Conferma",
+          style: newStatus === "completed" ? "destructive" : "default",
+          onPress: async () => {
+            try {
+              await updateLeagueStatus(leagueId!, newStatus as "participants_joining" | "draft_active" | "repair_active" | "market_closed" | "completed");
+              await refetch();
+              setIsStatusPickerOpen(false);
+              Alert.alert("✅ Stato Aggiornato", `La lega è ora in stato "${statusInfo?.label}"`);
+            } catch (error) {
+              Alert.alert("Errore", "Impossibile aggiornare lo stato");
+            }
+          },
+        },
+      ]
+    );
   };
 
   const handleRemoveParticipant = (userId: string, name: string) => {
@@ -295,112 +341,81 @@ export default function LeagueSettingsScreen() {
               Stato attuale: <Text className="text-primary-500 font-semibold">{STATUS_LABELS[league.status] ?? league.status}</Text>
             </Text>
 
-            <View className="gap-2">
-              {/* Start Auction Button */}
-              {league.status === "participants_joining" && (
-                <Pressable
-                  onPress={() => {
-                    Alert.alert(
-                      "Avvia Asta",
-                      "Sei sicuro di voler avviare l'asta? I partecipanti non potranno più unirsi.",
-                      [
-                        { text: "Annulla", style: "cancel" },
-                        {
-                          text: "Avvia",
-                          style: "default",
-                          onPress: async () => {
-                            try {
-                              await updateLeagueStatus(leagueId!, "draft_active");
-                              await refetch();
-                              Alert.alert("✅ Asta Avviata", "L'asta è ora attiva!");
-                            } catch (error) {
-                              Alert.alert("Errore", "Impossibile avviare l'asta");
-                            }
-                          },
-                        },
-                      ]
-                    );
-                  }}
-                  className="bg-green-600 p-4 rounded-xl flex-row items-center justify-center active:opacity-80"
-                >
-                  <Text className="text-2xl mr-2">🚀</Text>
-                  <Text className="text-white font-bold text-lg">Avvia Asta</Text>
-                </Pressable>
-              )}
+            {/* Dropdown Selector */}
+            <Pressable
+              onPress={() => setIsStatusPickerOpen(true)}
+              className="bg-dark-bg border border-gray-700 rounded-xl p-4 flex-row items-center justify-between active:opacity-80"
+            >
+              <View className="flex-row items-center">
+                <Text className="text-2xl mr-3">{STATUS_ICONS[league.status] ?? "📋"}</Text>
+                <Text className="text-white font-semibold">{STATUS_LABELS[league.status] ?? league.status}</Text>
+              </View>
+              <Text className="text-gray-400">▼</Text>
+            </Pressable>
 
-              {/* Pause/Resume Auction */}
-              {league.status === "draft_active" && (
-                <Pressable
-                  onPress={() => {
-                    Alert.alert(
-                      "Chiudi Mercato",
-                      "Vuoi chiudere il mercato principale e passare alle riparazioni?",
-                      [
-                        { text: "Annulla", style: "cancel" },
-                        {
-                          text: "Chiudi",
-                          onPress: async () => {
-                            try {
-                              await updateLeagueStatus(leagueId!, "repair_active");
-                              await refetch();
-                              Alert.alert("Mercato Chiuso", "Ora siete in fase riparazioni");
-                            } catch (error) {
-                              Alert.alert("Errore", "Impossibile aggiornare stato");
-                            }
-                          },
-                        },
-                      ]
-                    );
-                  }}
-                  className="bg-amber-600 p-4 rounded-xl flex-row items-center justify-center active:opacity-80"
-                >
-                  <Text className="text-2xl mr-2">🔧</Text>
-                  <Text className="text-white font-bold">Passa a Riparazioni</Text>
-                </Pressable>
-              )}
-
-              {/* Complete League */}
-              {(league.status === "repair_active" || league.status === "draft_active") && (
-                <Pressable
-                  onPress={() => {
-                    Alert.alert(
-                      "Completa Lega",
-                      "Questa azione terminerà definitivamente la lega. Continuare?",
-                      [
-                        { text: "Annulla", style: "cancel" },
-                        {
-                          text: "Completa",
-                          style: "destructive",
-                          onPress: async () => {
-                            try {
-                              await updateLeagueStatus(leagueId!, "completed");
-                              await refetch();
-                              Alert.alert("Lega Completata", "La lega è stata archiviata");
-                            } catch (error) {
-                              Alert.alert("Errore", "Impossibile completare la lega");
-                            }
-                          },
-                        },
-                      ]
-                    );
-                  }}
-                  className="bg-gray-600 p-4 rounded-xl flex-row items-center justify-center active:opacity-80"
-                >
-                  <Text className="text-2xl mr-2">✅</Text>
-                  <Text className="text-white font-bold">Completa Lega</Text>
-                </Pressable>
-              )}
-
-              {/* Completed state info */}
-              {league.status === "completed" && (
-                <View className="bg-dark-bg p-4 rounded-xl">
-                  <Text className="text-gray-400 text-center">
-                    ✅ Questa lega è stata completata e archiviata
-                  </Text>
-                </View>
-              )}
-            </View>
+            {league.status === "completed" && (
+              <View className="bg-dark-bg p-3 rounded-xl mt-3">
+                <Text className="text-gray-400 text-center text-sm">
+                  ✅ Questa lega è stata completata e archiviata
+                </Text>
+              </View>
+            )}
           </View>
+
+          {/* Status Picker Modal */}
+          <Modal
+            visible={isStatusPickerOpen}
+            transparent
+            animationType="fade"
+            onRequestClose={() => setIsStatusPickerOpen(false)}
+          >
+            <Pressable
+              className="flex-1 bg-black/70 items-center justify-center"
+              onPress={() => setIsStatusPickerOpen(false)}
+            >
+              <Pressable
+                className="bg-dark-card rounded-2xl p-4 mx-6 w-80"
+                onPress={() => { }}
+              >
+                <Text className="text-white text-lg font-bold mb-4 text-center">
+                  Seleziona Stato Lega
+                </Text>
+
+                {AVAILABLE_STATUSES.map((status) => {
+                  const isCurrentStatus = league.status === status.value;
+                  return (
+                    <Pressable
+                      key={status.value}
+                      onPress={() => handleStatusChange(status.value)}
+                      disabled={isCurrentStatus}
+                      className={`flex-row items-center p-4 rounded-xl mb-2 ${isCurrentStatus
+                        ? "bg-primary-600/30 border border-primary-500"
+                        : "bg-dark-bg active:opacity-80"
+                        }`}
+                    >
+                      <Text className="text-2xl mr-3">{status.icon}</Text>
+                      <View className="flex-1">
+                        <Text className={`font-semibold ${isCurrentStatus ? "text-primary-400" : "text-white"}`}>
+                          {status.label}
+                        </Text>
+                        <Text className="text-gray-400 text-xs">{status.description}</Text>
+                      </View>
+                      {isCurrentStatus && (
+                        <Text className="text-primary-400 text-xs">✓ Attuale</Text>
+                      )}
+                    </Pressable>
+                  );
+                })}
+
+                <Pressable
+                  onPress={() => setIsStatusPickerOpen(false)}
+                  className="mt-2 p-3 rounded-xl bg-gray-700"
+                >
+                  <Text className="text-white text-center font-semibold">Annulla</Text>
+                </Pressable>
+              </Pressable>
+            </Pressable>
+          </Modal>
 
           {/* Invite Code Section */}
           <View className="bg-dark-card rounded-xl p-4 mb-6">
