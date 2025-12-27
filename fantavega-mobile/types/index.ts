@@ -10,8 +10,7 @@ export type LeagueStatus =
   | "participants_joining"
   | "draft_active"
   | "repair_active"
-  | "market_closed"
-  | "completed";
+  | "market_closed";
 
 export type AuctionStatus =
   | "active"

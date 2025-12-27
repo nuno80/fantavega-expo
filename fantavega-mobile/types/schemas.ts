@@ -47,7 +47,6 @@ export const LeagueSchema = z.object({
     "draft_active",
     "repair_active",
     "market_closed",
-    "completed",
   ]),
   activeAuctionRoles: z.string().nullable(),
   slotsP: z.number().min(0),

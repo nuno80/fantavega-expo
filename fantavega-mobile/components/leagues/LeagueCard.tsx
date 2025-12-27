@@ -14,15 +14,13 @@ const STATUS_LABELS: Record<League["status"], string> = {
   draft_active: "Asta in corso",
   repair_active: "Riparazioni",
   market_closed: "Mercato chiuso",
-  completed: "Completata",
 };
 
 const STATUS_COLORS: Record<League["status"], string> = {
   participants_joining: "#22c55e", // green
   draft_active: "#f59e0b", // amber
   repair_active: "#3b82f6", // blue
-  market_closed: "#6b7280", // gray
-  completed: "#8b5cf6", // purple
+  market_closed: "#8b5cf6", // purple (final state)
 };
 
 export function LeagueCard({ league, onPress }: LeagueCardProps) {

@@ -91,6 +91,8 @@
 - [x] **Blocco auto-rilancio** - Impedito rilanciare su se stessi con messaggio "Sei già il miglior offerente!"
 - [x] **Fix spentCredits dinamico** - Calcolato come `initialBudget - currentBudget` per includere tutto (acquisti + penalità)
 - [x] **Validazione budget admin** - Budget modificabile solo in "Iscrizioni aperte" e può solo essere aumentato, mai diminuito
+- [x] **Dropdown stato lega** - Admin può selezionare lo stato da un menu a tendina con icone e descrizioni
+- [x] **Tracciamento originalBudget** - Salvato al momento dell'iscrizione per calcolo corretto spentCredits
 
 ### Tech Debt
 - [/] Foto giocatori (PlayerAvatar ✅, upload pending)

@@ -30,7 +30,6 @@ const STATUS_LABELS: Record<string, string> = {
   draft_active: "Asta in corso",
   repair_active: "Riparazioni",
   market_closed: "Mercato chiuso",
-  completed: "Completata",
 };
 
 // Status icons
@@ -38,8 +37,7 @@ const STATUS_ICONS: Record<string, string> = {
   participants_joining: "📥",
   draft_active: "🚀",
   repair_active: "🔧",
-  market_closed: "🔒",
-  completed: "✅",
+  market_closed: "✅",
 };
 
 // Available statuses for dropdown
@@ -47,8 +45,7 @@ const AVAILABLE_STATUSES = [
   { value: "participants_joining", label: "Iscrizioni aperte", icon: "📥", description: "I manager possono unirsi" },
   { value: "draft_active", label: "Asta in corso", icon: "🚀", description: "Asta principale attiva" },
   { value: "repair_active", label: "Riparazioni", icon: "🔧", description: "Fase di riparazione" },
-  { value: "market_closed", label: "Mercato chiuso", icon: "🔒", description: "Nessuna operazione" },
-  { value: "completed", label: "Completata", icon: "✅", description: "Lega archiviata" },
+  { value: "market_closed", label: "Mercato chiuso", icon: "✅", description: "Lega chiusa/archiviata" },
 ];
 
 export default function LeagueSettingsScreen() {
@@ -172,10 +169,10 @@ export default function LeagueSettingsScreen() {
         { text: "Annulla", style: "cancel" },
         {
           text: "Conferma",
-          style: newStatus === "completed" ? "destructive" : "default",
+          style: newStatus === "market_closed" ? "destructive" : "default",
           onPress: async () => {
             try {
-              await updateLeagueStatus(leagueId!, newStatus as "participants_joining" | "draft_active" | "repair_active" | "market_closed" | "completed");
+              await updateLeagueStatus(leagueId!, newStatus as "participants_joining" | "draft_active" | "repair_active" | "market_closed");
               await refetch();
               setIsStatusPickerOpen(false);
               Alert.alert("✅ Stato Aggiornato", `La lega è ora in stato "${statusInfo?.label}"`);
@@ -353,10 +350,10 @@ export default function LeagueSettingsScreen() {
               <Text className="text-gray-400">▼</Text>
             </Pressable>
 
-            {league.status === "completed" && (
+            {league.status === "market_closed" && (
               <View className="bg-dark-bg p-3 rounded-xl mt-3">
                 <Text className="text-gray-400 text-center text-sm">
-                  ✅ Questa lega è stata completata e archiviata
+                  ✅ Questa lega è stata chiusa e archiviata
                 </Text>
               </View>
             )}
