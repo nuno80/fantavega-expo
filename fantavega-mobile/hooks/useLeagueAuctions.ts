@@ -9,10 +9,12 @@ import { useEffect, useRef, useState } from "react";
 
 interface UseLeagueAuctionsReturn {
   auctions: Map<string, LiveAuction>;
-  auctionsList: Array<{ id: string; auction: LiveAuction }>;  // Per rendering
+  auctionsList: Array<{ id: string; auction: LiveAuction }>;
   activeCount: number;
   isLoading: boolean;
   error: Error | null;
+  refetch: () => void;
+  isRefreshing: boolean;
 }
 
 /**
@@ -26,6 +28,8 @@ export const useLeagueAuctions = (
   const [auctions, setAuctions] = useState<Map<string, LiveAuction>>(new Map());
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
+  const [refreshKey, setRefreshKey] = useState(0);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   // Track aste già in chiusura per evitare chiamate duplicate
   const closingAuctionsRef = useRef<Set<string>>(new Set());
@@ -55,7 +59,7 @@ export const useLeagueAuctions = (
     return () => {
       unsubscribe();
     };
-  }, [leagueId]);
+  }, [leagueId, refreshKey]);
 
   // ============================================
   // AUTO-CLOSE: Chiudi aste scadute automaticamente
@@ -99,11 +103,19 @@ export const useLeagueAuctions = (
 
   const activeCount = auctionsList.length;
 
+  const refetch = () => {
+    setIsRefreshing(true);
+    setRefreshKey((prev) => prev + 1);
+    setTimeout(() => setIsRefreshing(false), 500);
+  };
+
   return {
     auctions,
     auctionsList,
     activeCount,
     isLoading,
     error,
+    refetch,
+    isRefreshing,
   };
 };

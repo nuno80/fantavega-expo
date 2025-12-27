@@ -34,6 +34,8 @@ export default function AuctionsScreen() {
     activeCount,
     isLoading: auctionsLoading,
     error,
+    refetch,
+    isRefreshing,
   } = useLeagueAuctions(leagueId);
 
   const handleAuctionPress = (auctionId: string) => {
@@ -46,8 +48,7 @@ export default function AuctionsScreen() {
   };
 
   const handleRefresh = () => {
-    // I dati sono real-time, ma per UX manteniamo pull-to-refresh
-    // In futuro potremmo forzare un re-fetch qui
+    refetch();
   };
 
   // Loading state
@@ -154,7 +155,7 @@ export default function AuctionsScreen() {
           keyExtractor={(item) => item.id}
           refreshControl={
             <RefreshControl
-              refreshing={false}
+              refreshing={isRefreshing}
               onRefresh={handleRefresh}
               tintColor="#4f46e5"
             />

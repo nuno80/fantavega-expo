@@ -258,7 +258,7 @@ export default function RosterTab() {
       {showComplianceTimer && (
         <View className="mx-4 mt-4">
           <ComplianceTimer
-            timerStartTimestamp={complianceStatus!.complianceTimerStartAt}
+            timerStartTimestamp={complianceStatus!.complianceTimerStartAt ?? null}
             leagueId={leagueId ?? ""}
             userId={currentUserId}
             onPenaltyApplied={handleRefresh}
