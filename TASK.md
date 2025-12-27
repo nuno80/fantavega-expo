@@ -88,7 +88,7 @@
 
 ### Funzionalità Mobile-First
 - [ ] Offline indicator
-- [ ] Pull-to-refresh
+- [x] Pull-to-refresh ✅
 - [ ] Gesture navigation
 
 ---
