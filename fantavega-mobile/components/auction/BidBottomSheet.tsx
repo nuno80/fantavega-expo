@@ -1,6 +1,6 @@
 // components/auction/BidBottomSheet.tsx
-// Modal per offerte - Versione compatibile con Fabric (New Architecture)
-// Usa Modal nativo invece di @gorhom/bottom-sheet per evitare crash Fabric
+// Modal per offerte - Versione con flusso di conferma
+// Usa pendingBid state + pulsante conferma esplicito
 
 import * as Haptics from "expo-haptics";
 import { Bot, Check, X } from "lucide-react-native";
@@ -40,67 +40,57 @@ export function BidBottomSheet({
   isLoading,
   existingAutoBid,
 }: BidBottomSheetProps) {
-  const [customAmount, setCustomAmount] = useState<string>("");
+  const [pendingBid, setPendingBid] = useState<number>(currentBid + 1);
   const [useAutoBid, setUseAutoBid] = useState(false);
   const [maxBidAmount, setMaxBidAmount] = useState<string>("");
 
-  const quickBids = [1, 5, 10];
+  // Sync pendingBid if it becomes invalid
+  if (isOpen && pendingBid <= currentBid) {
+    setPendingBid(currentBid + 1);
+  }
 
-  const handleQuickBid = async (increment: number) => {
-    const newAmount = currentBid + increment;
-    if (newAmount > userBudget) {
-      Alert.alert("Budget insufficiente", `Hai solo ${userBudget} crediti.`);
-      await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+  const handleAdjustBid = (adjustment: number) => {
+    const newVal = pendingBid + adjustment;
+    if (newVal <= currentBid) {
+      Alert.alert("Offerta non valida", "L'offerta deve essere superiore all'attuale.");
       return;
     }
-
-    const maxAmount = useAutoBid ? parseInt(maxBidAmount, 10) : undefined;
-    if (useAutoBid && maxAmount) {
-      if (maxAmount < newAmount) {
-        Alert.alert("Errore", "Il massimo auto-bid deve essere >= alla tua offerta.");
-        return;
-      }
-      if (maxAmount > userBudget) {
-        Alert.alert("Budget insufficiente", `Il massimo non può superare ${userBudget}.`);
-        return;
-      }
+    if (newVal > userBudget) {
+      Alert.alert("Budget insufficiente", "Non hai abbastanza crediti.");
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      return;
     }
-
-    await Haptics.selectionAsync();
-    await onPlaceBid(newAmount, maxAmount);
+    setPendingBid(newVal);
+    Haptics.selectionAsync();
   };
 
-  const handleManualBid = async () => {
-    const amount = parseInt(customAmount, 10);
-    if (isNaN(amount) || amount <= currentBid) {
+  const handleConfirmStandardBid = async () => {
+    if (pendingBid <= currentBid) {
       Alert.alert("Errore", "L'offerta deve essere superiore a quella attuale.");
-      await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       return;
     }
-    if (amount > userBudget) {
-      Alert.alert("Budget insufficiente", `Hai solo ${userBudget} crediti.`);
-      await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+    if (pendingBid > userBudget) {
+      Alert.alert("Budget insufficiente", "Non hai abbastanza crediti.");
       return;
-    }
-
-    const maxAmount = useAutoBid ? parseInt(maxBidAmount, 10) : undefined;
-    if (useAutoBid && maxAmount) {
-      if (isNaN(maxAmount) || maxAmount < amount) {
-        Alert.alert("Errore", "Il massimo auto-bid deve essere >= alla tua offerta.");
-        await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-        return;
-      }
-      if (maxAmount > userBudget) {
-        Alert.alert("Budget insufficiente", `Il massimo non può superare ${userBudget}.`);
-        await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-        return;
-      }
     }
 
     await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    await onPlaceBid(amount, maxAmount);
-    setCustomAmount("");
-    setMaxBidAmount("");
+    await onPlaceBid(pendingBid);
+  };
+
+  const handleConfirmAutoBid = async () => {
+    const max = parseInt(maxBidAmount, 10);
+    if (isNaN(max) || max < pendingBid) {
+      Alert.alert("Errore Auto-Bid", "Il tetto massimo deve essere maggiore o uguale alla tua offerta iniziale.");
+      return;
+    }
+    if (max > userBudget) {
+      Alert.alert("Budget insufficiente", `Non puoi superare i tuoi ${userBudget} crediti.`);
+      return;
+    }
+
+    await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    await onPlaceBid(pendingBid, max);
   };
 
   return (
@@ -116,121 +106,151 @@ export function BidBottomSheet({
       >
         <Pressable onPress={onClose} className="flex-1 bg-black/60" />
 
-        <View className="rounded-t-3xl bg-[#1e1e2e] p-6">
-          <ScrollView showsVerticalScrollIndicator={false}>
+        <View className="rounded-t-3xl bg-[#1e1e2e] p-6 pb-10 shadow-2xl">
+          <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
             {/* Header */}
-            <View className="mb-4 flex-row items-center justify-between border-b border-gray-700 pb-4">
+            <View className="mb-6 flex-row items-center justify-between border-b border-gray-700 pb-4">
               <View>
-                <Text className="text-sm text-gray-400">Fai un'offerta per</Text>
-                <Text className="text-xl font-bold text-white">{playerName}</Text>
+                <Text className="text-gray-400 text-xs uppercase tracking-wider">Offerta per</Text>
+                <Text className="text-2xl font-black text-white">{playerName}</Text>
               </View>
-              <View className="flex-row items-center">
-                <View className="items-end mr-3">
-                  <Text className="text-sm text-gray-400">Attuale</Text>
-                  <Text className="text-xl font-bold text-green-400">
-                    {currentBid} 💰
-                  </Text>
-                </View>
-                <Pressable onPress={onClose} className="p-2 rounded-full bg-gray-800">
-                  <X size={20} color="#9ca3af" />
-                </Pressable>
+              <Pressable onPress={onClose} className="p-2 rounded-full bg-gray-800 active:bg-gray-700">
+                <X size={24} color="#9ca3af" />
+              </Pressable>
+            </View>
+
+            {/* Current Info Row */}
+            <View className="flex-row justify-between mb-8 px-2">
+              <View>
+                <Text className="text-gray-500 text-xs uppercase font-bold">Attuale</Text>
+                <Text className="text-2xl font-bold text-gray-300">{currentBid} <Text className="text-base text-gray-500">cr</Text></Text>
+              </View>
+              <View className="items-end">
+                <Text className="text-gray-500 text-xs uppercase font-bold">Tuo Budget</Text>
+                <Text className={`text-2xl font-bold ${userBudget < pendingBid ? "text-red-500" : "text-indigo-400"}`}>
+                  {userBudget} <Text className="text-base text-gray-500">cr</Text>
+                </Text>
               </View>
             </View>
 
-            {/* Quick Bids */}
-            <View className="mb-4 flex-row justify-between gap-2">
-              {quickBids.map((inc) => {
-                const canAfford = currentBid + inc <= userBudget;
-                return (
-                  <TouchableOpacity
-                    key={inc}
-                    onPress={() => handleQuickBid(inc)}
-                    disabled={isLoading || !canAfford}
-                    className={`flex-1 items-center justify-center rounded-xl py-3 ${canAfford ? "bg-indigo-600" : "bg-gray-700 opacity-50"}`}
-                  >
-                    <Text className="font-bold text-white">+{inc}</Text>
-                    <Text className="text-xs text-gray-300">({currentBid + inc})</Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
-
-            {/* Manual Input */}
-            <View className="mb-4">
-              <Text className="mb-2 text-sm text-gray-400">O inserisci importo</Text>
-              <View className="flex-row gap-2">
-                <TextInput
-                  className="flex-1 rounded-xl bg-[#11111a] p-4 text-lg text-white"
-                  placeholder={`Min: ${currentBid + 1}`}
-                  placeholderTextColor="#6b7280"
-                  keyboardType="number-pad"
-                  value={customAmount}
-                  onChangeText={setCustomAmount}
-                  editable={!isLoading}
-                />
+            {/* MAIN BID CONTROLS */}
+            <View className="items-center mb-8">
+              {/* Big Number Selector */}
+              <View className="flex-row items-center justify-center gap-6 mb-6 w-full">
                 <TouchableOpacity
-                  onPress={handleManualBid}
-                  disabled={isLoading || !customAmount}
-                  className={`items-center justify-center rounded-xl px-6 ${customAmount && !isLoading ? "bg-green-600" : "bg-gray-700 opacity-50"}`}
+                  onPress={() => handleAdjustBid(-1)}
+                  className="w-14 h-14 rounded-full bg-gray-800 items-center justify-center border border-gray-700 active:bg-gray-700"
                 >
-                  <Check size={24} color="white" />
+                  <Text className="text-3xl text-gray-400 font-bold">-</Text>
+                </TouchableOpacity>
+
+                <View className="items-center w-32">
+                  <Text className="text-5xl font-black text-white tracking-tighter">{pendingBid}</Text>
+                  <Text className="text-xs text-gray-500 uppercase font-bold tracking-widest mt-1">Crediti</Text>
+                </View>
+
+                <TouchableOpacity
+                  onPress={() => handleAdjustBid(1)}
+                  className="w-14 h-14 rounded-full bg-green-600 items-center justify-center shadow-lg active:bg-green-500"
+                >
+                  <Text className="text-3xl text-white font-bold">+</Text>
                 </TouchableOpacity>
               </View>
+
+              {/* Quick Increments */}
+              <View className="flex-row gap-3 w-full justify-center">
+                {[5, 10, 20].map(val => (
+                  <TouchableOpacity
+                    key={val}
+                    onPress={() => handleAdjustBid(val)}
+                    className="bg-gray-800 px-5 py-2 rounded-lg border border-gray-700 active:bg-gray-700"
+                  >
+                    <Text className="text-gray-300 font-bold">+{val}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
             </View>
 
-            {/* Auto-Bid Section */}
-            <View className="mb-4 rounded-xl bg-indigo-900/30 p-4">
-              <View className="flex-row items-center justify-between mb-2">
-                <View className="flex-row items-center">
-                  <Bot size={20} color="#818cf8" />
-                  <Text className="ml-2 font-semibold text-indigo-300">
-                    Auto-Bid (eBay-style)
-                  </Text>
+            {/* CONFIRM BUTTON (Standard) */}
+            {!useAutoBid && (
+              <TouchableOpacity
+                onPress={handleConfirmStandardBid}
+                disabled={isLoading || pendingBid > userBudget}
+                className={`w-full py-4 rounded-xl items-center shadow-lg mb-6 flex-row justify-center gap-2 ${isLoading || pendingBid > userBudget
+                  ? 'bg-gray-800 opacity-50'
+                  : 'bg-green-600 active:bg-green-500'
+                  }`}
+              >
+                {isLoading ? (
+                  <Text className="text-white font-bold">Attendere...</Text>
+                ) : (
+                  <>
+                    <Check size={24} color="white" strokeWidth={3} />
+                    <Text className="text-white text-xl font-black uppercase tracking-wider">
+                      CONFERMA {pendingBid}
+                    </Text>
+                  </>
+                )}
+              </TouchableOpacity>
+            )}
+
+            {/* AUTO BID SECTION */}
+            <View className={`border-t border-gray-800 pt-6 mt-2 ${useAutoBid ? 'opacity-100' : 'opacity-80'}`}>
+              <View className="flex-row items-center justify-between mb-4">
+                <View className="flex-row items-center gap-2">
+                  <View className="p-2 rounded-lg bg-indigo-900/40">
+                    <Bot size={20} color="#818cf8" />
+                  </View>
+                  <View>
+                    <Text className="text-white font-bold text-base">Auto-Bid Assistant</Text>
+                    <Text className="text-gray-500 text-xs">Rilancia automaticamente per te</Text>
+                  </View>
                 </View>
                 <Switch
                   value={useAutoBid}
-                  onValueChange={setUseAutoBid}
+                  onValueChange={(val) => {
+                    setUseAutoBid(val);
+                    Haptics.selectionAsync();
+                  }}
                   trackColor={{ false: "#374151", true: "#4f46e5" }}
                   thumbColor={useAutoBid ? "#a5b4fc" : "#9ca3af"}
                 />
               </View>
 
-              {existingAutoBid && !useAutoBid && (
-                <View className="mb-2 rounded-lg bg-green-900/30 p-2">
-                  <Text className="text-xs text-green-400">
-                    ✅ Hai già un auto-bid attivo: max {existingAutoBid} crediti
+              {useAutoBid && (
+                <View className="bg-indigo-900/20 rounded-xl p-4 border border-indigo-500/30">
+                  <Text className="text-indigo-200 text-sm mb-3 font-medium">
+                    Fino a quanto vuoi rilanciare?
+                  </Text>
+
+                  <View className="flex-row items-center gap-3 mb-4">
+                    <TextInput
+                      className="flex-1 bg-[#11111a] text-white text-xl font-bold p-4 rounded-xl border border-indigo-500/50"
+                      placeholder={`Min: ${pendingBid}`}
+                      placeholderTextColor="#6b7280"
+                      keyboardType="number-pad"
+                      value={maxBidAmount}
+                      onChangeText={setMaxBidAmount}
+                      autoFocus
+                    />
+                    <Text className="text-gray-400 font-bold">MAX</Text>
+                  </View>
+
+                  <TouchableOpacity
+                    onPress={handleConfirmAutoBid}
+                    className="bg-indigo-600 w-full py-4 rounded-xl items-center shadow-lg active:bg-indigo-500"
+                  >
+                    <Text className="text-white font-bold text-lg uppercase tracking-wide">
+                      ATTIVA AUTO-BID
+                    </Text>
+                  </TouchableOpacity>
+                  <Text className="text-center text-gray-500 text-[10px] mt-3">
+                    Partirà con un'offerta di {pendingBid}, poi rilancerà +1 automaticamente.
                   </Text>
                 </View>
               )}
-
-              {useAutoBid && (
-                <>
-                  <Text className="mb-2 text-xs text-gray-400">
-                    Il sistema rilancerà automaticamente fino al tuo massimo
-                  </Text>
-                  <TextInput
-                    className="rounded-xl bg-[#11111a] p-4 text-white border border-indigo-600"
-                    placeholder="Massimo auto-bid..."
-                    placeholderTextColor="#6b7280"
-                    keyboardType="number-pad"
-                    value={maxBidAmount}
-                    onChangeText={setMaxBidAmount}
-                    editable={!isLoading}
-                  />
-                  <Text className="mt-1 text-xs text-gray-500">
-                    Pagherai solo 1 in più del secondo miglior offerente
-                  </Text>
-                </>
-              )}
             </View>
 
-            {/* Budget Info */}
-            <View className="items-center pb-4">
-              <Text className="text-sm text-gray-400">
-                Budget disponibile:{" "}
-                <Text className="font-bold text-indigo-400">{userBudget}</Text>
-              </Text>
-            </View>
           </ScrollView>
         </View>
       </KeyboardAvoidingView>

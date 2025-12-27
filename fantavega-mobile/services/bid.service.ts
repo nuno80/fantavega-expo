@@ -127,35 +127,82 @@ function simulateAutoBidBattle(
 // ============================================
 
 /**
- * Ricalcola i locked credits totali per un utente
- * somma tutti i maxAmount degli auto-bid attivi
+ * Ricalcola i locked credits totali per un utente.
+ *
+ * LOGICA CORRETTA:
+ * - Per ogni asta ATTIVA dove l'utente sta vincendo: blocca currentBid
+ * - Se l'utente ha anche un auto-bid su quell'asta: blocca MAX(autoBid.maxAmount, currentBid)
+ * - Se l'utente ha auto-bid ma NON sta vincendo: blocca autoBid.maxAmount
+ *
+ * In pratica: locked = somma di MAX(autoBid.maxAmount, currentBid se vincente) per ogni asta
  */
 async function recalculateUserLockedCredits(
   leagueId: string,
   userId: string
 ): Promise<void> {
-  // Recupera tutti gli auto-bid di tutte le aste della lega per questo utente
+  // 1. Recupera tutti gli auto-bid dell'utente
   const allAutoBidsRef = ref(realtimeDb, `autoBids/${leagueId}`);
-  const snapshot = await get(allAutoBidsRef);
+  const autoBidsSnapshot = await get(allAutoBidsRef);
 
-  let totalLocked = 0;
+  // Mappa: auctionId -> maxAmount dell'auto-bid
+  const userAutoBids = new Map<string, number>();
 
-  if (snapshot.exists()) {
-    const data = snapshot.val();
-    // struttura: { auctionId: { userId: { maxAmount, isActive, ... } } }
-    for (const auctionData of Object.values(data)) {
+  if (autoBidsSnapshot.exists()) {
+    const data = autoBidsSnapshot.val();
+    for (const [auctionId, auctionData] of Object.entries(data)) {
       const userAutoBid = (auctionData as Record<string, unknown>)[userId];
       if (
         userAutoBid &&
         typeof userAutoBid === "object" &&
         (userAutoBid as { isActive?: boolean }).isActive !== false
       ) {
-        totalLocked += (userAutoBid as { maxAmount: number }).maxAmount || 0;
+        userAutoBids.set(auctionId, (userAutoBid as { maxAmount: number }).maxAmount || 0);
       }
     }
   }
 
-  // Aggiorna Firestore
+  // 2. Recupera tutte le aste ATTIVE della lega
+  const auctionsRef = ref(realtimeDb, `auctions/${leagueId}`);
+  const auctionsSnapshot = await get(auctionsRef);
+
+  // Mappa: auctionId -> currentBid se l'utente sta vincendo
+  const userWinningBids = new Map<string, number>();
+
+  if (auctionsSnapshot.exists()) {
+    const data = auctionsSnapshot.val();
+    for (const [auctionId, auctionData] of Object.entries(data)) {
+      const auction = auctionData as {
+        status?: string;
+        currentBidderId?: string;
+        currentBid?: number
+      };
+
+      // Solo aste attive dove l'utente sta vincendo
+      if (auction.status === "active" && auction.currentBidderId === userId) {
+        userWinningBids.set(auctionId, auction.currentBid || 0);
+      }
+    }
+  }
+
+  // 3. Calcola il totale bloccato
+  // Per ogni asta coinvolta: MAX(autoBid.maxAmount, currentBid se vincente)
+  let totalLocked = 0;
+
+  // Set di tutte le aste coinvolte (auto-bid O vincente)
+  const allAuctionIds = new Set([...userAutoBids.keys(), ...userWinningBids.keys()]);
+
+  for (const auctionId of allAuctionIds) {
+    const autoBidMax = userAutoBids.get(auctionId) ?? 0;
+    const winningBid = userWinningBids.get(auctionId) ?? 0;
+
+    // Blocca il MAX tra auto-bid e offerta vincente
+    const lockedForThisAuction = Math.max(autoBidMax, winningBid);
+    totalLocked += lockedForThisAuction;
+
+    console.log(`[LOCKED] Auction ${auctionId}: autoBid=${autoBidMax}, winning=${winningBid}, locked=${lockedForThisAuction}`);
+  }
+
+  // 4. Aggiorna Firestore
   await updateLockedCredits(leagueId, userId, totalLocked);
   console.log(`[BID] Updated locked credits for ${userId}: ${totalLocked}`);
 }
@@ -247,6 +294,11 @@ export const placeBid = async (
       return { success: false, message: "L'asta non è più attiva." };
     }
 
+    // Impedisci rilancio se sei già il miglior offerente
+    if (auction.currentBidderId === userId) {
+      return { success: false, message: "Sei già il miglior offerente!" };
+    }
+
     // Validazione importo: normalmente > currentBid, ma allowMatch permette = currentBid
     if (allowMatch) {
       if (amount < auction.currentBid) {
@@ -298,7 +350,7 @@ export const placeBid = async (
     const validatedBid = BidSchema.parse(bidRecord);
     await push(bidsRef, validatedBid);
 
-    // Se c'è un auto-bid, salvalo e aggiorna locked credits
+    // Se c'è un auto-bid, salvalo
     if (maxAmount && maxAmount > amount) {
       const autoBidRef = ref(realtimeDb, `autoBids/${leagueId}/${auctionId}/${userId}`);
       console.log(`[AUTO-BID SAVE] Saving auto-bid for ${userId}: max=${maxAmount}`);
@@ -310,9 +362,15 @@ export const placeBid = async (
         createdAt: Date.now(),
         updatedAt: Date.now(),
       });
+    }
 
-      // Aggiorna locked credits calcolando TUTTI gli auto-bid attivi
-      await recalculateUserLockedCredits(leagueId, userId);
+    // Aggiorna locked credits per TUTTE le offerte (non solo auto-bid!)
+    // Ora che stai vincendo questa asta, i crediti sono bloccati
+    await recalculateUserLockedCredits(leagueId, userId);
+
+    // Aggiorna anche i locked credits del bidder precedente (ora non sta più vincendo)
+    if (previousBidderId) {
+      await recalculateUserLockedCredits(leagueId, previousBidderId);
     }
 
     // ============================================

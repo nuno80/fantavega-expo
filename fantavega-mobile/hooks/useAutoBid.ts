@@ -99,7 +99,7 @@ export function useUserAutoBidsInLeague(
           if (
             userAutoBid &&
             typeof userAutoBid === "object" &&
-            (userAutoBid as { isActive?: boolean }).isActive !== false
+            (userAutoBid as { isActive?: boolean }).isActive === true
           ) {
             newAutoBids.set(
               auctionId,

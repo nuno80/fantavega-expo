@@ -105,8 +105,31 @@ export default function LeagueSettingsScreen() {
     );
   }
 
+  // Budget può essere modificato SOLO in fase participants_joining
+  const canEditBudget = league.status === "participants_joining";
+
   const onSubmit = async (data: Partial<League>) => {
     if (!leagueId) return;
+
+    // Validazione: budget può solo AUMENTARE, mai diminuire
+    if (data.initialBudgetPerManager !== undefined &&
+      data.initialBudgetPerManager < league.initialBudgetPerManager) {
+      Alert.alert(
+        "Errore",
+        `Il budget può solo essere aumentato.\nValore attuale: ${league.initialBudgetPerManager}\nValore minimo consentito: ${league.initialBudgetPerManager}`
+      );
+      return;
+    }
+
+    // Validazione: budget non modificabile se asta in corso
+    if (!canEditBudget && data.initialBudgetPerManager !== league.initialBudgetPerManager) {
+      Alert.alert(
+        "Errore",
+        "Il budget può essere modificato solo nella fase 'Iscrizioni aperte'."
+      );
+      return;
+    }
+
     setIsSaving(true);
     try {
       await updateLeague(leagueId, data);
@@ -185,20 +208,39 @@ export default function LeagueSettingsScreen() {
           {/* Budget */}
           <View className="mb-4">
             <Text className="text-white font-semibold mb-2">Budget Iniziale</Text>
+            {!canEditBudget && (
+              <View className="bg-amber-900/30 rounded-lg p-2 mb-2">
+                <Text className="text-amber-400 text-xs text-center">
+                  ⚠️ Modificabile solo in fase "Iscrizioni aperte"
+                </Text>
+              </View>
+            )}
             <Controller
               control={control}
               name="initialBudgetPerManager"
               render={({ field: { onChange, value } }) => (
                 <TextInput
-                  className="bg-dark-card text-white p-4 rounded-xl"
+                  className={`p-4 rounded-xl ${canEditBudget ? 'bg-dark-card text-white' : 'bg-gray-800 text-gray-500'}`}
                   value={String(value ?? "")}
-                  onChangeText={(t) => onChange(Number(t) || 0)}
+                  onChangeText={(t) => {
+                    const newValue = Number(t) || 0;
+                    // Blocca diminuzione lato UI
+                    if (newValue >= league.initialBudgetPerManager) {
+                      onChange(newValue);
+                    }
+                  }}
                   keyboardType="numeric"
                   placeholder="500"
                   placeholderTextColor="#6b7280"
+                  editable={canEditBudget}
                 />
               )}
             />
+            {canEditBudget && (
+              <Text className="text-gray-500 text-xs mt-1">
+                ℹ️ Il budget può solo essere aumentato (min: {league.initialBudgetPerManager})
+              </Text>
+            )}
           </View>
 
           {/* Slots */}

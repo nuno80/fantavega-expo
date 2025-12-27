@@ -2,12 +2,14 @@
 // Tab Manager: mostra gli altri partecipanti della lega
 // Visualizza budget, slot riempiti, info e stato compliance di ogni manager
 
+import { ManagerRosterModal } from "@/components/auction/ManagerRosterModal";
 import { OtherManagersTab } from "@/components/auction/OtherManagersTab";
 import { useCurrentUser } from "@/contexts/AuthContext";
 import { useComplianceCheck, useMultipleComplianceStatus } from "@/hooks/useCompliance";
 import { useLeague, useLeagueParticipants } from "@/hooks/useLeague";
+import { useLeagueAuctions } from "@/hooks/useLeagueAuctions";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { ActivityIndicator, Text, View } from "react-native";
 
 
@@ -21,6 +23,15 @@ export default function ManagersTab() {
 
   const { data: participants, isLoading } = useLeagueParticipants(leagueId ?? "");
   const { data: league } = useLeague(leagueId ?? "");
+  const { auctionsList } = useLeagueAuctions(leagueId ?? null);
+
+  // Stato per modal rosa manager
+  const [selectedManager, setSelectedManager] = useState<{
+    id: string;
+    name: string;
+    budgetLeft: number;
+    totalBudget: number;
+  } | null>(null);
 
   // 🔴 TRIGGER COMPLIANCE CHECK all'accesso della pagina manager
   useComplianceCheck(leagueId ?? null, currentUserId, league?.status);
@@ -83,8 +94,15 @@ export default function ManagersTab() {
   }, [participants, currentUserId, complianceMap, league, totalSlots]);
 
   const handleManagerPress = (managerId: string) => {
-    // TODO: Naviga al dettaglio del manager
-    console.log("View manager:", managerId);
+    const manager = managers.find(m => m.id === managerId);
+    if (manager) {
+      setSelectedManager({
+        id: manager.id,
+        name: manager.teamName,
+        budgetLeft: manager.budgetLeft,
+        totalBudget: manager.totalBudget,
+      });
+    }
   };
 
   if (isLoading) {
@@ -115,6 +133,26 @@ export default function ManagersTab() {
         managers={managers}
         onManagerPress={handleManagerPress}
       />
+
+      {/* Modal Rosa Manager */}
+      {selectedManager && (
+        <ManagerRosterModal
+          visible={!!selectedManager}
+          onClose={() => setSelectedManager(null)}
+          leagueId={leagueId ?? ""}
+          managerId={selectedManager.id}
+          managerName={selectedManager.name}
+          availableCredits={selectedManager.budgetLeft}
+          totalBudget={selectedManager.totalBudget}
+          slotsConfig={{
+            P: league?.slotsP ?? 3,
+            D: league?.slotsD ?? 8,
+            C: league?.slotsC ?? 8,
+            A: league?.slotsA ?? 6,
+          }}
+          winningAuctions={auctionsList.map(a => ({ id: a.id, auction: a.auction }))}
+        />
+      )}
     </View>
   );
 }

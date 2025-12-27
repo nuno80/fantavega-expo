@@ -3,9 +3,12 @@
 // Include giocatori assegnati + aste in corso dove stai vincendo
 
 import { AuctionTimer } from "@/components/auction/AuctionTimer";
+import { BudgetStats } from "@/components/auction/BudgetStats";
 import { ComplianceTimer } from "@/components/auction/ComplianceTimer";
 import { PlayerAvatar } from "@/components/PlayerAvatar";
 import { useCurrentUser } from "@/contexts/AuthContext";
+import { useUserAutoBidsInLeague } from "@/hooks/useAutoBid";
+import { useUserBudget } from "@/hooks/useBudget";
 import { useComplianceCheck, useComplianceStatus } from "@/hooks/useCompliance";
 import { useLeague } from "@/hooks/useLeague";
 import { useLeagueAuctions } from "@/hooks/useLeagueAuctions";
@@ -51,6 +54,12 @@ export default function RosterTab() {
   const { roster, isLoading: isRosterLoading } = useUserRoster(leagueId, currentUserId);
   const { auctionsList } = useLeagueAuctions(leagueId ?? null);
   const [isRefreshing, setIsRefreshing] = useState(false);
+
+  // Budget data reale da Firebase
+  const budget = useUserBudget(leagueId ?? null, league?.initialBudgetPerManager ?? 500);
+
+  // Auto-bid dell'utente per tutte le aste
+  const { autoBids } = useUserAutoBidsInLeague(leagueId ?? null, currentUserId);
 
   // 🔴 TRIGGER COMPLIANCE CHECK all'accesso della pagina rosa
   const { result: complianceResult } = useComplianceCheck(
@@ -202,6 +211,10 @@ export default function RosterTab() {
 
     // Giocatore in asta (stai vincendo)
     if (slot.slotType === "auction" && slot.auction) {
+      // Recupera l'auto-bid dell'utente per questa asta
+      const userAutoBidAmount = autoBids.get(slot.auction.id) ?? null;
+      const hasAutoBid = userAutoBidAmount != null && userAutoBidAmount > 0;
+
       return (
         <View className="mx-4 mb-2 flex-row items-center rounded-xl bg-amber-900/30 border border-amber-700/50 p-3">
           <View className="mr-3">
@@ -219,6 +232,14 @@ export default function RosterTab() {
               <Text className="font-semibold text-amber-300">{slot.auction.data.playerName}</Text>
             </View>
             <Text className="text-xs text-amber-400/70">{slot.auction.data.playerTeam}</Text>
+            {/* Auto-Bid Badge - Solo se presente */}
+            {hasAutoBid && (
+              <View className="flex-row items-center mt-1">
+                <Text className="text-xs font-medium text-amber-400">
+                  🤖 Max: {userAutoBidAmount}
+                </Text>
+              </View>
+            )}
           </View>
           <View className="items-end">
             <Text className="font-bold text-amber-400">{slot.auction.data.currentBid}</Text>
@@ -246,10 +267,9 @@ export default function RosterTab() {
   const assignedCount = roster?.players.length ?? 0;
   const auctionCount = myWinningAuctions.length;
 
-  // Determina se mostrare il timer compliance
+  // Determina se mostrare il timer compliance (usa != null per catturare null E undefined da Firebase)
   const showComplianceTimer =
-    complianceStatus?.complianceTimerStartAt !== null &&
-    complianceStatus?.complianceTimerStartAt !== undefined &&
+    complianceStatus?.complianceTimerStartAt != null &&
     (league?.status === "draft_active" || league?.status === "repair_active");
 
   return (
@@ -266,32 +286,47 @@ export default function RosterTab() {
         </View>
       )}
 
-      {/* Riepilogo Budget */}
-      <View className={`mx-4 ${showComplianceTimer ? 'mt-2' : 'mt-4'} mb-2 flex-row justify-between rounded-xl bg-dark-card p-4`}>
+      {/* Budget Stats - 4 metriche crediti */}
+      <View className={`mx-4 ${showComplianceTimer ? 'mt-2' : 'mt-4'} mb-2`}>
+        <BudgetStats
+          disponibili={budget.availableBudget}
+          spesi={budget.spentCredits}
+          dispAutoBid={budget.availableForAutoBid}
+          bloccati={budget.totalBlocked}
+        />
+      </View>
+
+      {/* Riepilogo Rosa */}
+      <View className="mx-4 mb-2 flex-row justify-between rounded-xl bg-dark-card p-3">
         <View className="items-center flex-1">
-          <Text className="text-2xl font-bold text-primary-400">
+          <Text className="text-xl font-bold text-primary-400">
             {assignedCount}
           </Text>
-          <Text className="text-xs text-gray-400">Assegnati</Text>
+          <Text className="text-[10px] text-gray-400">Assegnati</Text>
         </View>
         {auctionCount > 0 && (
           <>
             <View className="w-px bg-gray-700" />
             <View className="items-center flex-1">
-              <Text className="text-2xl font-bold text-amber-400">
+              <Text className="text-xl font-bold text-amber-400">
                 {auctionCount}
               </Text>
-              <Text className="text-xs text-amber-400/70">In Asta</Text>
+              <Text className="text-[10px] text-amber-400/70">In Asta</Text>
             </View>
           </>
         )}
-        <View className="w-px bg-gray-700" />
-        <View className="items-center flex-1">
-          <Text className="text-2xl font-bold text-white">
-            {roster?.totalSpent ?? 0}
-          </Text>
-          <Text className="text-xs text-gray-400">Spesi</Text>
-        </View>
+        {/* Penalità - mostra solo se ci sono penalità */}
+        {(complianceStatus?.penaltiesAppliedThisCycle ?? 0) > 0 && (
+          <>
+            <View className="w-px bg-gray-700" />
+            <View className="items-center flex-1">
+              <Text className="text-xl font-bold text-red-400">
+                -{(complianceStatus?.penaltiesAppliedThisCycle ?? 0) * 5}
+              </Text>
+              <Text className="text-[10px] text-red-400/70">Penalità 💸</Text>
+            </View>
+          </>
+        )}
       </View>
 
       {/* Lista Rosa */}

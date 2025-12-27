@@ -253,8 +253,8 @@ export async function processComplianceAndPenalties(
 
   // 5. Se compliant → reset timer e ciclo
   if (complianceCheck.isCompliant) {
-    if (complianceStatus.complianceTimerStartAt !== null) {
-      // Era non-compliant, ora è compliant → reset
+    if (complianceStatus.complianceTimerStartAt != null) {
+      // Era non-compliant, ora è compliant → reset (== cattura null E undefined da Firebase)
       complianceStatus.complianceTimerStartAt = null;
       complianceStatus.penaltiesAppliedThisCycle = 0;
       await set(complianceRef, complianceStatus);
@@ -270,8 +270,8 @@ export async function processComplianceAndPenalties(
 
   // 6. Non compliant → gestisci timer e penalità
 
-  // Se timer non attivo, avvialo
-  if (complianceStatus.complianceTimerStartAt === null) {
+  // Se timer non attivo, avvialo (== cattura null E undefined da Firebase)
+  if (complianceStatus.complianceTimerStartAt == null) {
     complianceStatus.complianceTimerStartAt = now;
     await set(complianceRef, complianceStatus);
     console.log("[PENALTY] Timer compliance AVVIATO a:", now, "salvato in:", `compliance/${leagueId}/${userId}`);
@@ -328,10 +328,12 @@ export async function processComplianceAndPenalties(
 
   if (participantSnap.exists()) {
     const currentBudget = participantSnap.data().currentBudget ?? 0;
+    const currentSpent = participantSnap.data().spentCredits ?? 0;
     const newBudget = Math.max(0, currentBudget - penaltyAmount);
 
     await updateDoc(participantRef, {
       currentBudget: newBudget,
+      spentCredits: currentSpent + penaltyAmount, // Penalità conta come crediti spesi
     });
   }
 

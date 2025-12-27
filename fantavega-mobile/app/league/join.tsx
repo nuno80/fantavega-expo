@@ -1,12 +1,13 @@
 // app/league/join.tsx
 // Schermata per unirsi a una lega tramite codice invito
+// Supporta Deep Linking: fantavega://league/join?code=XYZ
 
 import { useCurrentUser } from "@/contexts/AuthContext";
 import { addParticipant, getLeagueByInviteCode } from "@/services/league.service";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useQueryClient } from "@tanstack/react-query";
-import { Href, Stack, useRouter } from "expo-router";
-import { useState } from "react";
+import { Href, Stack, useLocalSearchParams, useRouter } from "expo-router";
+import { useEffect, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import {
   ActivityIndicator,
@@ -31,17 +32,28 @@ export default function JoinLeagueScreen() {
   const { currentUserId, currentUser } = useCurrentUser();
   const [isJoining, setIsJoining] = useState(false);
 
+  // Deep Linking: capture code from URL params
+  const { code: urlCode } = useLocalSearchParams<{ code?: string }>();
+
   const {
     control,
     handleSubmit,
     formState: { errors },
+    setValue,
   } = useForm<JoinLeagueForm>({
     resolver: zodResolver(JoinLeagueSchema),
     defaultValues: {
-      code: "",
+      code: urlCode?.toUpperCase() ?? "",
       teamName: currentUser?.username ?? "",
     },
   });
+
+  // Update form if URL code changes (app already open)
+  useEffect(() => {
+    if (urlCode) {
+      setValue("code", urlCode.toUpperCase());
+    }
+  }, [urlCode, setValue]);
 
   const onSubmit = async (data: JoinLeagueForm) => {
     setIsJoining(true);

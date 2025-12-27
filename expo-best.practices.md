@@ -10,8 +10,34 @@
 
 ---
 
+## 0. UI & LAYOUT SAFEGUARDS (Priority #1)
+
+### ⚠️ SAFE AREA & BOTTOM NAVIGATION
+Le app moderne sono "edge-to-edge". Le barre di sistema (gesture bar, home indicator) si sovrappongono al contenuto.
+
+**Mai usare altezze fisse per footer/tabbar senza `useSafeAreaInsets`**.
+
+| ❌ Sbagliato | ✅ Corretto |
+|-------------|------------|
+| `height: 60` | `height: 60 + insets.bottom` |
+| `paddingBottom: 0` | `paddingBottom: insets.bottom` |
+
+```tsx
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+
+// Dentro componente Layout/Tab
+const insets = useSafeAreaInsets();
+
+// Style dinamico
+style={{
+  height: 60 + insets.bottom,
+  paddingBottom: insets.bottom
+}}
+```
+
 ## 1. REACT COMPILER & PERFORMANCE
 - React Compiler **ATTIVO** → NO `useMemo`/`useCallback` manuali (eccezione: librerie legacy)
+
 - Usa `use(Promise)`, `use(Context)` → NO `useEffect` per fetch
 - Heavy tasks (>16ms) → `react-native-worklets-core`
 

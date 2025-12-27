@@ -81,6 +81,17 @@
 
 ## 📋 Backlog Futuro
 
+### Bug Fix Recenti ✅
+- [x] **Auto-bid visibile nel tab Rosa** - Badge "🤖 Max: X" negli slot in asta
+- [x] **Fix calcolo budget** - Hook `useBudget` ora legge da Firestore (non RTDB)
+- [x] **Fix detrazione budget su vincita asta** - `assignAuctionWinnerToRoster` ora aggiorna `currentBudget`, `spentCredits` e `lockedCredits`
+- [x] **Fix locked credits per TUTTE le offerte** - Ora anche le offerte manuali bloccano i crediti, non solo gli auto-bid
+- [x] **Penalità nei crediti spesi** - Le penalità ora incrementano anche `spentCredits`
+- [x] **Indicatore penalità nel tab Rosa** - Mostra quante penalità (in crediti) hai subito
+- [x] **Blocco auto-rilancio** - Impedito rilanciare su se stessi con messaggio "Sei già il miglior offerente!"
+- [x] **Fix spentCredits dinamico** - Calcolato come `initialBudget - currentBudget` per includere tutto (acquisti + penalità)
+- [x] **Validazione budget admin** - Budget modificabile solo in "Iscrizioni aperte" e può solo essere aumentato, mai diminuito
+
 ### Tech Debt
 - [/] Foto giocatori (PlayerAvatar ✅, upload pending)
 - [ ] Deep Links per inviti lega

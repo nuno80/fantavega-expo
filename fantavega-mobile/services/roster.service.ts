@@ -175,6 +175,11 @@ export const removePlayerFromRoster = async (
 /**
  * Assegna il vincitore di un'asta alla sua rosa
  * Chiamato quando il timer scade e l'asta è completata
+ *
+ * IMPORTANTE: Aggiorna anche il budget del vincitore!
+ * - Detrarre purchasePrice da currentBudget
+ * - Incrementare spentCredits
+ * - Rimuovere l'auto-bid e ricalcolare lockedCredits
  */
 export const assignAuctionWinnerToRoster = async (
   leagueId: string,
@@ -189,6 +194,7 @@ export const assignAuctionWinnerToRoster = async (
     purchasePrice: number;
   }
 ): Promise<void> => {
+  // 1. Aggiungi il giocatore alla rosa
   const rosterPlayer: RosterPlayer = {
     playerId: playerData.playerId,
     playerName: playerData.playerName,
@@ -201,4 +207,58 @@ export const assignAuctionWinnerToRoster = async (
   };
 
   await addPlayerToRoster(leagueId, winnerId, rosterPlayer);
+
+  // 2. Aggiorna il budget del vincitore in Firestore
+  // Import dinamico per evitare dipendenze circolari
+  const { firestore } = await import("@/lib/firebase");
+  const { doc, getDoc, updateDoc, increment } = await import("firebase/firestore");
+
+  const participantRef = doc(firestore, "leagues", leagueId, "participants", winnerId);
+  const participantSnap = await getDoc(participantRef);
+
+  if (participantSnap.exists()) {
+    const currentBudget = participantSnap.data().currentBudget ?? 500;
+    const currentSpent = participantSnap.data().spentCredits ?? 0;
+
+    await updateDoc(participantRef, {
+      currentBudget: currentBudget - playerData.purchasePrice,
+      spentCredits: currentSpent + playerData.purchasePrice,
+    });
+
+    console.log(
+      `[ROSTER] Budget updated for ${winnerId}: -${playerData.purchasePrice} (new budget: ${currentBudget - playerData.purchasePrice})`
+    );
+  }
+
+  // 3. Rimuovi l'auto-bid del vincitore per questa asta (se presente) e ricalcola locked credits
+  const autoBidRef = ref(realtimeDb, `autoBids/${leagueId}/${auctionId}/${winnerId}`);
+  const autoBidSnap = await get(autoBidRef);
+
+  if (autoBidSnap.exists()) {
+    await remove(autoBidRef);
+    console.log(`[ROSTER] Removed auto-bid for winner ${winnerId} on auction ${auctionId}`);
+
+    // Ricalcola i locked credits totali per il vincitore
+    const { updateLockedCredits } = await import("@/services/budget.service");
+    const allAutoBidsRef = ref(realtimeDb, `autoBids/${leagueId}`);
+    const allAutoBidsSnap = await get(allAutoBidsRef);
+
+    let totalLocked = 0;
+    if (allAutoBidsSnap.exists()) {
+      const data = allAutoBidsSnap.val();
+      for (const auctionData of Object.values(data)) {
+        const userAutoBid = (auctionData as Record<string, unknown>)[winnerId];
+        if (
+          userAutoBid &&
+          typeof userAutoBid === "object" &&
+          (userAutoBid as { isActive?: boolean }).isActive !== false
+        ) {
+          totalLocked += (userAutoBid as { maxAmount: number }).maxAmount || 0;
+        }
+      }
+    }
+
+    await updateLockedCredits(leagueId, winnerId, totalLocked);
+    console.log(`[ROSTER] Updated locked credits for ${winnerId}: ${totalLocked}`);
+  }
 };
