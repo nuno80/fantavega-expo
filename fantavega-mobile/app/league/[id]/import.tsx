@@ -8,8 +8,6 @@ import {
   parseCsvContent,
   validateImportData,
 } from "@/services/roster-import.service";
-import * as DocumentPicker from "expo-document-picker";
-import { File } from "expo-file-system";
 import { router, useLocalSearchParams } from "expo-router";
 import {
   AlertCircle,
@@ -36,6 +34,7 @@ export default function ImportScreen() {
   const [csvContent, setCsvContent] = useState("");
   const [isValidating, setIsValidating] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
+  const [filePickerAvailable, setFilePickerAvailable] = useState(true);
   const [validationResult, setValidationResult] = useState<{
     isValid: boolean;
     errors: string[];
@@ -49,6 +48,10 @@ export default function ImportScreen() {
 
   const handlePickFile = async () => {
     try {
+      // Dynamic import per evitare crash su Expo Go
+      const DocumentPicker = await import("expo-document-picker");
+      const { File } = await import("expo-file-system");
+
       const result = await DocumentPicker.getDocumentAsync({
         type: ["text/csv", "text/plain", "text/comma-separated-values"],
         copyToCacheDirectory: true,
@@ -63,8 +66,12 @@ export default function ImportScreen() {
       setCsvContent(content);
       setValidationResult(null);
     } catch (error) {
-      console.error("[IMPORT] Error picking file:", error);
-      Alert.alert("Errore", "Impossibile leggere il file");
+      console.warn("[IMPORT] File picker not available:", error);
+      setFilePickerAvailable(false);
+      Alert.alert(
+        "File picker non disponibile",
+        "Incolla il contenuto CSV nel campo testo qui sotto.\n\n(Per selezionare file, usa un development build)"
+      );
     }
   };
 

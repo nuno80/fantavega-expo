@@ -11,9 +11,7 @@ import {
   exportUserRosterToCsv,
 } from "@/services/roster-export.service";
 import * as Clipboard from "expo-clipboard";
-import { File, Paths } from "expo-file-system";
 import { useLocalSearchParams } from "expo-router";
-import * as Sharing from "expo-sharing";
 import { Check, Copy, Download, FileText, Share2, Users } from "lucide-react-native";
 import { useState } from "react";
 import {
@@ -98,19 +96,32 @@ export default function ExportScreen() {
   const handleShare = async () => {
     if (!exportResult) return;
 
-    const fileName = `fantavega-export-${leagueId}-${Date.now()}.${format === "csv" ? "csv" : "txt"}`;
-    const file = new File(Paths.cache, fileName);
-    await file.write(exportResult);
+    try {
+      // Dynamic import per evitare crash su Expo Go
+      const { File, Paths } = await import("expo-file-system");
+      const Sharing = await import("expo-sharing");
 
-    if (await Sharing.isAvailableAsync()) {
-      await Sharing.shareAsync(file.uri, {
-        mimeType: format === "csv" ? "text/csv" : "text/plain",
-        dialogTitle: "Esporta Rosa",
-      });
-    } else {
+      const fileName = `fantavega-export-${leagueId}-${Date.now()}.${format === "csv" ? "csv" : "txt"}`;
+      const file = new File(Paths.cache, fileName);
+      await file.write(exportResult);
+
+      if (await Sharing.isAvailableAsync()) {
+        await Sharing.shareAsync(file.uri, {
+          mimeType: format === "csv" ? "text/csv" : "text/plain",
+          dialogTitle: "Esporta Rosa",
+        });
+      } else {
+        // Fallback: copia negli appunti
+        await Clipboard.setStringAsync(exportResult);
+        Alert.alert("Copiato!", "Contenuto copiato negli appunti (condivisione non disponibile)");
+      }
+    } catch (error) {
+      // Fallback per Expo Go: solo copia
+      console.warn("[EXPORT] Native sharing not available, falling back to copy:", error);
+      await Clipboard.setStringAsync(exportResult);
       Alert.alert(
-        "Condivisione non disponibile",
-        "La condivisione non è supportata su questo dispositivo"
+        "Copiato!",
+        "Contenuto copiato negli appunti.\n\n(Per condividere file, usa un development build)"
       );
     }
   };
